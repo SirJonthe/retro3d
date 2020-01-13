@@ -61,7 +61,7 @@ Retro3d comes with a custom collision and physics engine that detects collisions
 [![Video](https://i.imgur.com/kppXVx9.png)](https://i.imgur.com/yfbXti1.mp4 "Physics (VIDEO)")
 _Click image for video_
 
-Warning - While collisions for colliders work as expected the physics engine is currently a work in progress and does not react as expected in all situations.
+**WARNING!!** While collisions for convex colliders work as expected the physics engine is currently a work in progress and does not react as expected in all situations.
 
 ### Sound
 
