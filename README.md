@@ -122,7 +122,7 @@ There are still features that should ideally be implemented. Most of the feature
 
 ### Depth buffers
 
-Depth buffers will be removed from the software renderer. This increases performance, but may cause some scenes not to be rendered properly.
+Support for depth buffers will be removed from the software renderer. This increases performance, but may cause some scenes not to be rendered properly.
 
 This feature is already implemented, but requires manual control for the users to take advantage of.
 
