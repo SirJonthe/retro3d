@@ -38,7 +38,7 @@ retro3d::Entity *e = Engine.SpawnEntity();
 Foo             *c = e->AddComponent<Foo>();
 ```
 
-The ECS model is mainly a model of composition over inheritance where a game object, called entity (which is essentially a completely blank data slot) consists of a number of custom components that define its behavior. This eliminates the need to create a completely new type of entity when the behavior needs to be modified regardless of if its behavior should differ only slightly or even greatly from an already existing base object. Systems, in turn, work on classes of components, and can be readily compared to a rulebook of a game. Systems, however, are not just a way to modify the game rules, but also the behavior of retro3d itself.
+The ECS model is mainly a model of composition over inheritance where a game object, called entity, (which is essentially a completely blank data slot) consists of a number of custom components that define its behavior. This eliminates the need to create a completely new type of entity when the behavior needs to be modified regardless of if its behavior should differ only slightly or even greatly from an already existing base object. Systems, in turn, work on classes of components, and can be readily compared to a rulebook of a game. Systems, however, are not just a way to modify the game rules, but also the behavior of retro3d itself.
 
 A benefit with this kind of model is two-fold; The processor can work on multiple components in tandem enabling parallel processing, and the programmer can alter the behavior of each game object on the fly without having to resort to contrived gameplay code or inheritance on a game object basis when only a slight change of behavior is sought.
 
@@ -58,7 +58,7 @@ The graphics component of the engine is implemented as a platform independent de
 
 Retro3d comes with a custom collision and physics engine that detects collisions (using GJK and the expanding polytope algorithm) and applies proper responses to collisions (separating translations for movable colliders and linear and angular velocities for rigid bodies).
 
-[![Video](https://i.imgur.com/kppXVx9.png)](https://i.imgur.com/yfbXti1.mp4 "Physics")
+[![Video](https://i.imgur.com/kppXVx9.png)](https://i.imgur.com/yfbXti1.mp4 "Physics (VIDEO)")
 _Click image for video_
 
 Warning - While collisions for colliders work as expected the physics engine is currently a work in progress and does not react as expected in all situations.
@@ -87,7 +87,7 @@ In general, retro3d uses only a few acceleration structures - mainly with regard
 
 Non-convex graphical objects are recursively split in half until the resulting geometry consists only of convex pieces. These pieces, together with their respective splitting plane are stored in a binary tree that, in combination with a view frustum, can be used to discard geometry outside of the hull and determine what order to draw the visible pieces so that they do not overlap.
 
-[![Video](https://i.imgur.com/veW5Lzd.png)](https://i.imgur.com/b8MPBS7.mp4 "Binary space partitioning")
+[![Video](https://i.imgur.com/veW5Lzd.png)](https://i.imgur.com/b8MPBS7.mp4 "Binary space partitioning (VIDEO)")
 _Click image for video_
 
 While BSP trees are common practice the difficulty lies in creating a well balanced tree that does not go needlessly deep.
@@ -134,7 +134,7 @@ Portals can be thought of as windows are another way of achieving better perform
 
 ![alt text](https://i.imgur.com/cLhMPoj.png "Portals 2")
 
-[![Video](https://i.imgur.com/y1Bmsfc.png)](https://i.imgur.com/DHPbLcN.mp4 "Potentially visible set")
+[![Video](https://i.imgur.com/y1Bmsfc.png)](https://i.imgur.com/DHPbLcN.mp4 "Potentially visible set (VIDEO)")
 _Click image for video_
 
 This feature is already implemented, but requires manual control for the users to take advantage of.
