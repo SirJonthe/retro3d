@@ -3,7 +3,7 @@ Copyright (c) 2020 Jonathan Karlsson
 
 ## About
 
-Retro3d is a small 3D game engine designed to be cross-platform, extensible, and easy to use. 
+Retro3d is a small 3D game engine written in C++ designed to be cross-platform, extensible, and easy to use. 
 
 The engine started development as a response to game developers using Unity or Unreal Engine to develop games that aim to look and feel retro. The illusion often falls short when using a modern engines as a result of their modern capabilities. The goal of the engine is to easily create games that feel more retro than what can be easily achieved in a modern game engine - Games made with retro3d automatically look and feel retro without impacting playability.
 
@@ -17,6 +17,25 @@ Retro3d tries to remain platform agnostic by making external interfaces and libr
 
 Retro3d supports an entity-component-system (ECS) model that Unity users will feel at home with.
 
+```cpp
+retro_component(Foo)
+{
+private:
+	int32_t m_ticker;
+protected:
+	void OnSpawn( void )   override { m_ticker = 0; }
+	void OnUpdate( void )  override { ++m_ticker; }
+	void OnDestroy( void ) override { m_ticker = -1; }
+public:
+	Foo( void ) : mtlInherit(this), m_ticker(0) {}
+};
+
+/* ... */
+
+retro3d::Entity *e = Engine.SpawnEntity();
+Foo             *c = e->AddComponent<Foo>();
+```
+
 The ECS model is mainly a model of composition over inheritance where a game object, called entity (which is essentially a completely blank data slot) consists of a number of custom components that define its behavior. This eliminates the need to create a completely new type of entity when the behavior needs to be modified regardless of if its behavior should differ only slightly or even greatly from an already existing base object. Systems, in turn, work on classes of components, and can be readily compared to a rulebook of a game. Systems, however, are not just a way to modify the game rules, but also the behavior of retro3d itself.
 
 A benefit with this kind of model is two-fold; The processor can work on multiple components in tandem enabling parallel processing, and the programmer can alter the behavior of each game object on the fly without having to resort to contrived gameplay code or inheritance on a game object basis when only a slight change of behavior is sought.
@@ -25,13 +44,19 @@ A benefit with this kind of model is two-fold; The processor can work on multipl
 
 Retro3d comes with a software renderer by default. The software renderer is meant to emulate Playstation 1 and/or Quake era games. This means low resolution, low color depth, low polygon count, no antialiasing, and primitive lighting.
 
-The renderer uses tiny3d as its render API. Tiny3d renders graphics, but does not interface with graphics hardware. As such tiny3d is combined with SDL in order to get access to the frame buffer and display graphics on the screen.
+The renderer uses [tiny3d](https://github.com/SirJonthe/tiny3d.git) as its render API. Tiny3d offers a fast highly parallel rasterizer, and optimized texture access (Morton order, compression).
+
+![alt text](https://i.imgur.com/yJDghZr.png "Color cell compression")
+
+Tiny3d renders graphics, but does not interface with graphics hardware. As such tiny3d is combined with SDL in order to get access to the frame buffer and display graphics on the screen.
 
 The graphics component of the engine is implemented as a platform independent device. Users of retro3d can implement their own renderers that adhere to the render device interface.
 
 ### Collisions and Physics
 
 Retro3d comes with a custom collision and physics engine that detects collisions (using GJK and the expanding polytope algorithm) and applies proper responses to collisions (separating translations for movable colliders and linear and angular velocities for rigid bodies).
+
+[![Alternate Text](https://i.imgur.com/yfbXti1.mp4)](https://i.imgur.com/yfbXti1.mp4 "Physics")
 
 Warning - While collisions for colliders work as expected the physics engine is currently a work in progress and does not react as expected in all situations.
 
@@ -59,17 +84,23 @@ In general, retro3d uses only a few acceleration structures - mainly with regard
 
 Non-convex graphical objects are recursively split in half until the resulting geometry consists only of convex pieces. These pieces, together with their respective splitting plane are stored in a binary tree that, in combination with a view frustum, can be used to discard geometry outside of the hull and determine what order to draw the visible pieces so that they do not overlap.
 
+[![Alternate Text](https://i.imgur.com/b8MPBS7.mp4)](https://i.imgur.com/b8MPBS7.mp4 "Binary space partitioning")
+
 While BSP trees are common practice the difficulty lies in creating a well balanced tree that does not go needlessly deep.
 
 ### Bounding volume hierarchy (BVH)
 
 A BVH is a binary tree that recursively groups two finite sub-spaces together to form a greater space containing both sub-spaces. A BVH has great general-purpose use within retro3d and is used to everything from collision detection, to the lighting model and the potentially visible set (PVS).
 
+![alt text](https://i.imgur.com/m1VEvHG.png "Bounding volume hierarchy")
+
 ### Parallelism
 
 The engine tries to embody a principle of data parallelism that enables for efficient, and easy-to-follow parallelism. Rather than letting threads do separate jobs, all threads do the same job on a proportional sub-set of the work load. Each thread gets to work undisturbed and in complete isolation from the other threads. This principle also enables efficient use of vector instructions (SIMD).
 
 As an example, for the software renderer, the complete view frustum is split into a number of separate sub-frustums that each determine the potentially visible set (PVS) separately by a number of threads. The PVS:s are then traversed in-order and rendered by a number of threads to separate portions of the screen where pixels are processed in groups using SIMD (size of the group depends on what vector instructions the engine is compiled with support for).
+
+![alt text](https://i.imgur.com/lMz7emQ.png "Renderer parallelism")
 
 Unfortunately, such parallelism is not possible for all jobs, but is utilized wherever it can.
 
@@ -94,6 +125,12 @@ For the software renderer, 16 bit colors will be reduced to 8 bit indices + 256 
 ### Portals
 
 Portals can be thought of as windows are another way of achieving better performance for indoor spaces that can be used in combination with many other acceleration techniques. Before a level model is divided into a BSP tree artist-defined portals split the geometry into sectors. The portals can then be used in conjunction with the view frustum to determine what sectors are visible which enables the engine to completely discard entire sectors (and their content) if the portal into that sector is not in view.
+
+![alt text](https://i.imgur.com/NRKbuc8.png "Portals 1")
+
+![alt text](https://i.imgur.com/cLhMPoj.png "Portals 2")
+
+[![Alternate Text](https://i.imgur.com/DHPbLcN.mp4)](https://i.imgur.com/DHPbLcN.mp4 "Link Title")
 
 This feature is already implemented, but requires manual control for the users to take advantage of.
 
