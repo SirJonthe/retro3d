@@ -4,3 +4,6 @@
 [submodule "common/MiniLib"]
 	path = common/MiniLib
 	url = https://www.github.com/SirJonthe/MiniLib.git
+[submodule "common/md5"]
+	path = common/md5
+	url = https://github.com/SirJonthe/md5.git
