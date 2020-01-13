@@ -1,0 +1,6 @@
+[submodule "api/tiny3d"]
+	path = api/tiny3d
+	url = https://www.github.com/SirJonthe/tiny3d.git
+[submodule "common/MiniLib"]
+	path = common/MiniLib
+	url = https://www.github.com/SirJonthe/MiniLib.git
