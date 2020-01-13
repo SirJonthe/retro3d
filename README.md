@@ -73,7 +73,7 @@ The sound component of the engine is implemented as a platform independent devic
 
 Retro3d comes with an input device based around SDL.
 
-The input device makes interfacing with input devices abstract. Instead of querying if a button is pressed the used queries whether an action has been performed (instead of checking if SPACE is pressed, the used checks if "jump" is active).
+The input device makes interfacing with input devices abstract. Instead of querying if a button is pressed the user queries whether an action has been performed (instead of checking if SPACE is pressed, the user checks if "jump" is active).
 
 The input component of the engine is implemented as a platform independent device. Users of retro3d can implement their own input devices that adhere to the input device interface.
 
@@ -85,10 +85,14 @@ In general, retro3d uses only a few acceleration structures - mainly with regard
 
 ### Binary space partitioning (BSP)
 
-Non-convex graphical objects are recursively split in half until the resulting geometry consists only of convex pieces. These pieces, together with their respective splitting plane are stored in a binary tree that, in combination with a view frustum, can be used to discard geometry outside of the hull and determine what order to draw the visible pieces so that they do not overlap.
+Non-convex graphical objects are recursively split in half until the resulting geometry consists only of convex pieces. These pieces, together with their respective splitting plane are stored in a binary tree that, in combination with a view frustum, can be used to discard geometry outside of the view and determine what order to draw the visible pieces so that they do not overlap.
 
 [![Video](https://i.imgur.com/veW5Lzd.png)](https://i.imgur.com/b8MPBS7.mp4 "Binary space partitioning (VIDEO)")
 _Click image for video_
+
+The software renderer traverses the geometry in accordance with the painter's algorithm (not in accordance with the reverse painter's algorithm) and uses a mask lock pixels from being drawn more than once.
+
+The BSP tree can be used to accelerate ray tracing against geometry by testing for intersections as they sequentially occur along the ray's travel path.
 
 While BSP trees are common practice the difficulty lies in creating a well balanced tree that does not go needlessly deep.
 
@@ -100,7 +104,7 @@ A BVH is a binary tree that recursively groups two finite sub-spaces together to
 
 ### Parallelism
 
-The engine tries to embody a principle of data parallelism that enables for efficient, and easy-to-follow parallelism. Rather than letting threads do separate jobs, all threads do the same job on a proportional sub-set of the work load. Each thread gets to work undisturbed and in complete isolation from the other threads. This principle also enables efficient use of vector instructions (SIMD).
+The engine tries to embody a principle of data parallelism that enables efficient and easy-to-follow parallelism. Rather than letting threads do separate jobs, all threads do the same job on a proportional sub-set of the work load. Each thread gets to work undisturbed and in complete isolation from the other threads. This principle also enables efficient use of vector instructions (SIMD).
 
 As an example, for the software renderer, the complete view frustum is split into a number of separate sub-frustums that each determine the potentially visible set (PVS) separately by a number of threads. The PVS:s are then traversed in-order and rendered by a number of threads to separate portions of the screen where pixels are processed in groups using SIMD (size of the group depends on what vector instructions the engine is compiled with support for).
 
@@ -114,7 +118,7 @@ Unfortunately, such parallelism is not possible for all jobs, but is utilized wh
 
 The feature set of the engine is meant to be small and portable. This will make maintaining the engine easy, and make porting the engine to other platforms simpler. This also prevents users of the engine to be tempted to do things that the engine was never designed to do in the first place, thus keeping games running on the engine simple. More advanced game ideas or graphically demanding games should be implemented in engines with a wide and modern feature set.
 
-There are still features that should ideally be implemented. Most of the features listed below are already implemented in code, but lack a proper interface that make operating the features an automatic process rather than a manual one. Manually operating the features are error prone, which 
+There are still features that should ideally be implemented. Most of the features listed below are already implemented in code, but lack a proper interface that make operating the features an automatic process rather than a manual one. Manually operating the features are error prone and not recommended, but fully possible if done with care.
 
 ### Depth buffers
 
