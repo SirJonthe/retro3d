@@ -141,7 +141,7 @@ This feature is already implemented, but requires manual control for the users t
 
 ### Tools
 
-While an editor is crucial for game development, there are currently no plans to develop one for retro3d. Users of retro3d are better off creating their own editor using the engine as a base to suit their own needs rather than creating a poor one-size-fits-all solution.
+While an editor is crucial for game development, there are currently no plans to develop one for retro3d. Users of retro3d are better off creating their own editor using the engine as a base to suit their own needs rather than including a poor one-size-fits-all solution.
 
 Some form of inspector will be made available that hooks into the retro3d engine via the traditional ECS model that will allow the user to pause the game and visually inspect and do crude manipulation of active entities, systems, and the game engine in order to allow for faster visual debugging.
 
