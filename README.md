@@ -57,6 +57,7 @@ The graphics component of the engine is implemented as a platform independent de
 Retro3d comes with a custom collision and physics engine that detects collisions (using GJK and the expanding polytope algorithm) and applies proper responses to collisions (separating translations for movable colliders and linear and angular velocities for rigid bodies).
 
 [![Video](https://i.imgur.com/kppXVx9.png)](https://i.imgur.com/yfbXti1.mp4 "Physics")
+_Click image for video_
 
 Warning - While collisions for colliders work as expected the physics engine is currently a work in progress and does not react as expected in all situations.
 
@@ -85,6 +86,7 @@ In general, retro3d uses only a few acceleration structures - mainly with regard
 Non-convex graphical objects are recursively split in half until the resulting geometry consists only of convex pieces. These pieces, together with their respective splitting plane are stored in a binary tree that, in combination with a view frustum, can be used to discard geometry outside of the hull and determine what order to draw the visible pieces so that they do not overlap.
 
 [![Video](https://i.imgur.com/veW5Lzd.png)](https://i.imgur.com/b8MPBS7.mp4 "Binary space partitioning")
+_Click image for video_
 
 While BSP trees are common practice the difficulty lies in creating a well balanced tree that does not go needlessly deep.
 
@@ -131,6 +133,7 @@ Portals can be thought of as windows are another way of achieving better perform
 ![alt text](https://i.imgur.com/cLhMPoj.png "Portals 2")
 
 [![Video](https://i.imgur.com/y1Bmsfc.png)](https://i.imgur.com/DHPbLcN.mp4 "Potentially visible set")
+_Click image for video_
 
 This feature is already implemented, but requires manual control for the users to take advantage of.
 
