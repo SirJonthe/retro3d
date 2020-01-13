@@ -153,11 +153,11 @@ While retro3d can render a lightmap it still needs the user to input the texture
 
 This feature is partially implemented; Lightmaps are supported, but lightmap texture coordinates have to be provided by the artist.
 
-### Custom sound engine
+### Custom sound mixer
 
-Retro3d currently uses the stock SDL mixer (SDL_mixer) for sound mixing. The SDL mixer is, however, very limited in its capabilities. There are plans to implement a software-based mixer that enables the engine to proceurally manipulate sounds as well as greater freedom for users to manipulate sounds.
+Retro3d currently uses the stock SDL mixer (SDL_mixer) for sound mixing. The SDL mixer is, however, very limited in its capabilities. There are plans to implement a software-based mixer that enables the engine to proceurally manipulate sounds as well as allows for greater freedom for artists to manipulate sounds.
 
-#### Proper animation
+### Proper animation
 
 Currently, the engine enables animations by loading a series of models, each representing a frame in an animation loop. This is far from ideal from a creative perspective which can make development harder than it has to be, difficulties in achieving procedural animation, and an excessive memory footprint.
 
@@ -177,11 +177,11 @@ This feature is partially implemented; A BVH can quickly be used to determine li
 
 ### Automatic level of detail (LOD)
 
-Distant objects can be simplified significantly by reducing their vertex and face count and increasing performance.
+Distant objects can be simplified significantly by reducing their vertex and face count thereby increasing performance. While it is possible to implement this using artist defined LOD:s combined with game code that checks for distance efforts will be made to make this an automatic process.
 
 ### Graphical user interface (GUI)
 
-There is little implementation independent interface to rendering a GUI (except for text). Ideally there needs to be proper support for widgets (text input fields, buttons, scroll bars, images etc.)
+The interface to rendering a GUI is limited. Ideally there needs to be proper support for widgets (text input fields, buttons, scroll bars, images etc.)
 
 This feature is already implemented, but requires manual control for the users to take advantage of.
 
