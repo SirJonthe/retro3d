@@ -931,6 +931,7 @@ void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out,
 	uint64_t hv = 0;
 	uint64_t ht = 0;
 	uint64_t hn = 0;
+
 	while (c < clipped_v.GetSize()) {
 		if (clipped_v[c] == v[unclipped_index.i[u].v]) {
 
@@ -940,15 +941,15 @@ void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out,
 
 			u = (u + 1) % unclipped_index.i.GetSize();
 		} else {
-			// c is not in the vertex list at all, check its neighbor indices (a clipped vertex must have 1 neighbor that is clipped and 1 neighbor that is NOT clipped)
-			const int32_t c0 = (c - 1) % clipped_v.GetSize();
-			const int32_t c1 = (c + 1) % clipped_v.GetSize();
+			// NOTE: c is not in the vertex list at all, check its neighbor indices (a clipped vertex must have 1 neighbor that is clipped and 1 neighbor that is NOT clipped).
+			const int32_t c0 = c > 0                       ? c - 1 : clipped_v.GetSize() - 1;
+			const int32_t c1 = c < clipped_v.GetSize() - 1 ? c + 1 : 0;
 
 			// NOTE: Iterate u until u matches c0 or c1 (FP inequality is okay since we are looking for bit-identical matches).
 			while (clipped_v[c0] != v[unclipped_index.i[u].v] && clipped_v[c1] != v[unclipped_index.i[u].v]) {
-				++u;
+				u = (u + 1) % unclipped_index.i.GetSize();
 			}
-			const int32_t u0 = (u - 1) & unclipped_index.i.GetSize();
+			const int32_t u0 = u > 0 ? (u - 1) % unclipped_index.i.GetSize() : unclipped_index.i.GetSize() - 1;
 
 			// NOTE: Create a hashed index that is a combination of the vertices that form the edge (because the clipped vertex lies on the edge).
 			hv = Hash(unclipped_index.i[u].v, unclipped_index.i[u0].v);
@@ -958,7 +959,7 @@ void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out,
 
 		out->v[hv] = clipped_v[c];
 		out->t[ht] = clipped_t[c];
-		out->n[hn] = clipped_n[c];
+		out->n[hn] = mmlNormalizeIf(clipped_n[c]);
 
 		out_face->i[c].v = hv;
 		out_face->i[c].t = ht;
@@ -1010,6 +1011,9 @@ void retro3d::ModelConstructor::ToModel(retro3d::Model &out)
 	for (int32_t mit = 0; mit != out.m.GetSize(); ++mit) {
 		retro3d::Material *ma = &out.m[mit];
 		const MaterialMap *mb = &m[mit];
+		ma->name = mb->name;
+		ma->cd = mb->cd;
+		ma->td = mb->td;
 		ma->f.SetCapacity(mb->f.size());
 		ma->f.Resize(0);
 		for (auto fit = mb->f.begin(); fit != mb->f.end(); ++fit) {
@@ -1215,8 +1219,18 @@ void retro3d::ModelConstructor::Split(const retro3d::Plane &plane, retro3d::Mode
 
 	for (int32_t mit = 0; mit < m.GetSize(); ++mit) {
 
-		if (front != nullptr) { front->m[mit].f.reserve(m[mit].f.size()); }
-		if (back  != nullptr) { back->m[mit].f.reserve(m[mit].f.size()); }
+		if (front != nullptr) {
+			front->m[mit].name = m[mit].name;
+			front->m[mit].cd = m[mit].cd;
+			front->m[mit].td = m[mit].td;
+			front->m[mit].f.reserve(m[mit].f.size());
+		}
+		if (back  != nullptr) {
+			back->m[mit].name = m[mit].name;
+			back->m[mit].cd = m[mit].cd;
+			back->m[mit].td = m[mit].td;
+			back->m[mit].f.reserve(m[mit].f.size());
+		}
 
 		for (auto fit = m[mit].f.begin(); fit != m[mit].f.end(); ++fit) {
 
@@ -1258,6 +1272,14 @@ void retro3d::ModelConstructor::Split(const retro3d::Plane &plane, retro3d::Mode
 		} else {
 			back->Destroy();
 		}
+	}
+}
+
+void retro3d::ModelConstructor::Debug_PrintMaterials( void ) const
+{
+	for (int32_t i = 0; i < m.GetSize(); ++i) {
+		std::cout << m[i].name << std::endl;
+		std::cout << m[i].cd[0] << "," << m[i].cd[1] << "," << m[i].cd[2] << std::endl;
 	}
 }
 

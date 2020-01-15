@@ -103,6 +103,7 @@ public:
 
 	double   Time( void ) const;
 	double   DeltaTime( void ) const;
+	uint64_t ProgramTime( void ) const;
 	float    GetFramesPerSecond( void ) const;
 	uint64_t GetFrameCount( void ) const;
 

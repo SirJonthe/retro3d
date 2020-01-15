@@ -132,7 +132,7 @@ For the software renderer, 16 bit colors will be reduced to 8 bit indices + 256 
 
 ### Portals
 
-Portals can be thought of as windows are another way of achieving better performance for indoor spaces that can be used in combination with many other acceleration techniques. Before a level model is divided into a BSP tree artist-defined portals split the geometry into sectors. The portals can then be used in conjunction with the view frustum to determine what sectors are visible which enables the engine to completely discard entire sectors (and their content) if the portal into that sector is not in view.
+Portals can be thought of as windows and are another way of achieving better performance for indoor spaces that can be used in combination with many other acceleration techniques. Before a level model is divided into a BSP tree artist-defined portals split the geometry into sectors. The portals can then be used in conjunction with the view frustum to determine what sectors are visible which enables the engine to completely discard entire sectors (and their content) if the portal into that sector is not in view.
 
 ![alt text](https://i.imgur.com/NRKbuc8.png "Portals 1")
 
@@ -192,3 +192,12 @@ While an editor is crucial for game development, there are currently no plans to
 Some form of inspector will be made available that hooks into the retro3d engine via the traditional ECS model that will allow the user to pause the game and visually inspect and do crude manipulation of active entities, systems, and the game engine in order to allow for faster visual debugging.
 
 Some form of console will be made available that supports viewing game output and giving the engine commands.
+
+## Credits
+
+The images and videos above include content from the following creators:
+
+Spiderbot and gun model (c) 2012 killyoverdrive (https://opengameart.org/users/killyoverdrive)
+Plant models (c) 2018 pistachio (https://opengameart.org/users/pistachio)
+Canister model (c) 2014 Ron Kapaun (https://opengameart.org/users/hreikin)
+

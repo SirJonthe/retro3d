@@ -839,6 +839,11 @@ double retro3d::Engine::DeltaTime( void ) const
 	return m_delta_time;
 }
 
+uint64_t retro3d::Engine::ProgramTime( void ) const
+{
+	return m_input->GetProgramTimeMS();
+}
+
 float retro3d::Engine::GetFramesPerSecond( void ) const
 {
 	return 1.0f / float(m_delta_time);

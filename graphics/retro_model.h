@@ -209,6 +209,7 @@ public:
 //	void InsertMaterial();
 	void Destroy( void );
 	void Split(const retro3d::Plane &plane, retro3d::ModelConstructor *front, retro3d::ModelConstructor *back);
+	void Debug_PrintMaterials( void ) const;
 };
 
 class ModelSet
