@@ -155,7 +155,7 @@ This feature is partially implemented; Lightmaps are supported, but lightmap tex
 
 ### Custom sound mixer
 
-Retro3d currently uses the stock SDL mixer (SDL_mixer) for sound mixing. The SDL mixer is, however, very limited in its capabilities. There are plans to implement a software-based mixer that enables the engine to proceurally manipulate sounds as well as allows for greater freedom for artists to manipulate sounds.
+Retro3d currently uses the stock SDL\\_mixer for sound mixing. The SDL mixer is, however, very limited in its capabilities. There are plans to implement a software-based mixer that enables the engine to proceurally manipulate sounds as well as allows for greater freedom for artists to manipulate sounds.
 
 ### Proper animation
 
@@ -192,6 +192,16 @@ While an editor is crucial for game development, there are currently no plans to
 Some form of inspector will be made available that hooks into the retro3d engine via the traditional ECS model that will allow the user to pause the game and visually inspect and do crude manipulation of active entities, systems, and the game engine in order to allow for faster visual debugging.
 
 Some form of console will be made available that supports viewing game output and giving the engine commands.
+
+## Building
+
+The core of retro3d should be able to be built using most C++ compilers on essentially any platform since the core itself uses nothing but standard libraries and platform independent code. However, in order to display graphics, output audio, and send inputs to the application the engine needs non-standard modules and/or platform dependent code. By default the engine ships with support for SDL1 or SDL2 video, audio, and input devices, and a tiny3d software render device (with plans for an OpenGL or a Vulkan hardware render device).
+
+Compiling with support for SDL requires additional compilation steps. First the user needs to decide on an SDL version (SDL2 is recommended, especially on newer versions of macOS as SDL1 has poor support and require several additional build steps), by defining either the macro ```RETRO3D\\_USE\\_SDL1``` or ```RETRO3D\\_USE\\_SDL2``` at the build stage. A successful compilation of the SDL devices require that the user install SDL (1 and/or 2, see information about installation instructions via official SDL resources as instructions may vary depending on system). The SDL headers must be included in the compiler's standard search directories (if you install SDL on Linux via official package managers, this step should be done for you). For SDL1 you need to link against ```SDL```, ```SDLmain```, and ```SDL\\_mixer``` and for SDL2 you need to link against ```SDL2```, ```SDL2main```, and ```SDL2\\_mixer``` in the linker stage. macOS may also require the user to link against the ```Cocoa``` framework.
+
+Compiling with support for the tiny3d render device requires the user to compile with support for threading and OpenMP. OpenMP should ship as a standard library with most compilers, so there should be no need to install it manually. The compiler may need to have the ```openmp``` flag sent to it for the build stage, while the linker requires a reference to the ```openmp``` library. Some systems (Linux) requires the user to also link against ```X11``` and ```pthread``` for threading to work.
+
+
 
 ## Credits
 
