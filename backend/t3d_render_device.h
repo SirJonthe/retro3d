@@ -97,18 +97,17 @@ private:
 	void         RenderFrustum(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
 	void         DepthRender(tiny3d::URect rect);
 	void         Print(tiny3d::URect rect);
-	void         WriteBuffers(tiny3d::URect rect);
-	void         UpdateBuffers( void );
 	void         ClearJobBuffers( void );
 
 public:
 	T3DRenderDevice( void );
 	~T3DRenderDevice( void ) override;
 
-	bool Init(uint32_t video_width, uint32_t video_height, bool fullscreen, const std::string &caption) override;
+	bool Init( void ) override;
 
 	void SetDepthClip(float near_z, float far_z, float hori_fov) override;
 	bool CreateRenderSurface(uint32_t width, uint32_t height) override;
+	void DestroyRenderSurface( void ) override;
 	void SetViewTransform(const mmlMatrix<4,4> &world_to_view) override;
 	void SetViewTransform(const mmlMatrix<4,4> *world_to_view) override;
 	void SetViewTransform(const retro3d::Camera &camera) override;

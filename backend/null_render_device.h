@@ -9,10 +9,11 @@ namespace platform
 class NullRenderDevice : public retro3d::RenderDevice
 {
 public:
-	bool Init(uint32_t, uint32_t, bool, const std::string&) override { return true; }
+	bool Init( void ) override { return true; }
 
 	void SetDepthClip(float, float, float) override {}
 	bool CreateRenderSurface(uint32_t, uint32_t) override { return true; }
+	void DestroyRenderSurface( void ) override {}
 	void SetViewTransform(const mmlMatrix<4,4>&) override {}
 	void SetViewTransform(const mmlMatrix<4,4>*) override {}
 	void SetViewTransform(const retro3d::Camera&) override {}

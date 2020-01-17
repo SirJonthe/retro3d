@@ -16,6 +16,10 @@ private:
 public:
 	retro3d::Engine       *GetEngine( void )       { return m_engine; }
 	const retro3d::Engine *GetEngine( void ) const { return m_engine; }
+
+	// Initialize
+	// Queue job
+	// Flush queue
 };
 
 }

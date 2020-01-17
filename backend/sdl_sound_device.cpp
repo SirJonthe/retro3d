@@ -1,9 +1,11 @@
 #ifdef RETRO3D_USE_SDL1
 	#include <SDL/SDL_mixer.h>
 	#include <SDL/SDL.h>
+	#define SDL_STR "SDL1"
 #elif defined(RETRO3D_USE_SDL2)
 	#include <SDL2/SDL_mixer.h>
 	#include <SDL2/SDL.h>
+	#define SDL_STR "SDL2"
 #endif
 #include "sdl_sound_device.h"
 
@@ -51,8 +53,10 @@ platform::SDLSoundDevice::SDLSoundDevice( void ) :
 
 platform::SDLSoundDevice::~SDLSoundDevice( void )
 {
+	std::cout << "[SDLSoundDevice::dtor (" << SDL_STR << ")] Quitting subsystem SDL_mixer" << std::endl;
 	Mix_CloseAudio();
 	Mix_Quit();
+	std::cout << "[SDLSoundDevice::dtor (" << SDL_STR << ")] Quitting subsystem SDL_AUDIO" << std::endl;
 	SDL_QuitSubSystem(SDL_INIT_AUDIO);
 	m_format.sample_rate = 0;
 }
@@ -64,28 +68,37 @@ bool platform::SDLSoundDevice::Init(const retro3d::Sound::Format &format)
 	int freq = 0, chan = 0;
 	Uint16 fmt = 0;
 
+	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+		std::cout << "[SDLSoundDevice::Init (" << SDL_STR << ")] " << SDL_GetError() << std::endl;
+		return false;
+	}
+
 	bool result =
-		SDL_InitSubSystem(SDL_INIT_AUDIO) == 0 &&
 //		Mix_Init(MIX_INIT_OGG|MIX_INIT_MOD|MIX_INIT_MP3|MIX_INIT_FLAC) && // only needed when support for OGG, MOD, MP3, and FLAC is needed. WAV supported by default.
 		Mix_OpenAudio(int(format.sample_rate), format.sample_format == retro3d::Sound::SampleFormat_INT16 ? AUDIO_S16LSB : AUDIO_U8, format.num_channels, 4096) == 0 &&
-		Mix_QuerySpec(&freq, &fmt, &chan) != 0 &&
-		(fmt == AUDIO_S16LSB || fmt == AUDIO_U8) &&
-		(chan == 1 || chan == 2);
+		Mix_QuerySpec(&freq, &fmt, &chan) != 0;
 
 	if (result == true) {
 		m_format.sample_rate = uint32_t(freq);
 		m_format.sample_format = fmt == AUDIO_S16LSB ? retro3d::Sound::SampleFormat_INT16 : retro3d::Sound::SampleFormat_UINT8;
 		m_format.num_channels = chan == 1 ? retro3d::Sound::Channels_Mono : retro3d::Sound::Channels_Stereo;
 	} else {
+		std::cout << "[SDLSoundDevice::Init (" << SDL_STR << ")] " << Mix_GetError() << std::endl;
 		m_format.sample_rate = 0;
 		m_format.sample_format = retro3d::Sound::SampleFormat_UINT8;
 		m_format.num_channels = retro3d::Sound::Channels_Mono;
 		Mix_CloseAudio();
 		Mix_Quit();
 		SDL_QuitSubSystem(SDL_INIT_AUDIO);
+		return false;
 	}
 
-	return result;
+	if ( (fmt != AUDIO_S16LSB && fmt == AUDIO_U8) || (chan != 1 && chan != 2) ) {
+		std::cout << "[SDLSoundDevice::Init (" << SDL_STR << ")] Failed to initialize to requested format." << std::endl;
+		return false;
+	}
+
+	return true;
 }
 
 void platform::SDLSoundDevice::SetReceiverTransform(const retro3d::SharedTransform &world_transform)

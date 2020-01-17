@@ -704,7 +704,7 @@ void retro3d::Engine::Tick( void )
 {
 	m_rand.GetUint();
 
-	UpdateDevices();
+	m_input->Update();
 
 	InitSystems();
 
@@ -713,6 +713,8 @@ void retro3d::Engine::Tick( void )
 	TickComponents();
 
 	TickSystems();
+
+	m_video->Display();
 
 	DestroySystems();
 
@@ -777,9 +779,15 @@ retro3d::Engine::Engine( void ) :
 
 retro3d::Engine::~Engine( void )
 {
+	// NOTE: Set ptrs to null immediately after being destroyed since the remaining devices might try to access destroyed devices in their respective destructors.
+	delete m_video;
+	m_video = nullptr;
 	delete m_renderer;
-	delete m_sound;
+	m_renderer = nullptr;
 	delete m_input;
+	m_input = nullptr;
+	delete m_sound;
+	m_sound = nullptr;
 }
 
 void retro3d::Engine::SetCamera(const retro3d::Camera *camera)

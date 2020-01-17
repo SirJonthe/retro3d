@@ -4,124 +4,14 @@
 
 #ifdef RETRO3D_USE_SDL1
 	#include <SDL/SDL.h>
+	#define SDL_STR "SDL1"
 #elif defined(RETRO3D_USE_SDL2)
 	#include <SDL2/SDL.h>
+	#define SDL_STR "SDL2"
 #endif
-
-#ifdef RETRO3D_USE_SDL1
-uint64_t ToR3DKeycode(SDLKey sdlk)
-#elif defined(RETRO3D_USE_SDL2)
-uint64_t ToR3DKeycode(SDL_Keycode sdlk)
-#endif
-{
-	switch (sdlk) {
-	case SDLK_a: return retro3d::Keyboard::A;
-	case SDLK_b: return retro3d::Keyboard::B;
-	case SDLK_c: return retro3d::Keyboard::C;
-	case SDLK_d: return retro3d::Keyboard::D;
-	case SDLK_e: return retro3d::Keyboard::E;
-	case SDLK_f: return retro3d::Keyboard::F;
-	case SDLK_g: return retro3d::Keyboard::G;
-	case SDLK_h: return retro3d::Keyboard::H;
-	case SDLK_i: return retro3d::Keyboard::I;
-	case SDLK_j: return retro3d::Keyboard::J;
-	case SDLK_k: return retro3d::Keyboard::K;
-	case SDLK_l: return retro3d::Keyboard::L;
-	case SDLK_m: return retro3d::Keyboard::M;
-	case SDLK_n: return retro3d::Keyboard::N;
-	case SDLK_o: return retro3d::Keyboard::O;
-	case SDLK_p: return retro3d::Keyboard::P;
-	case SDLK_q: return retro3d::Keyboard::Q;
-	case SDLK_r: return retro3d::Keyboard::R;
-	case SDLK_s: return retro3d::Keyboard::S;
-	case SDLK_t: return retro3d::Keyboard::T;
-	case SDLK_u: return retro3d::Keyboard::U;
-	case SDLK_v: return retro3d::Keyboard::V;
-	case SDLK_w: return retro3d::Keyboard::W;
-	case SDLK_x: return retro3d::Keyboard::X;
-	case SDLK_y: return retro3d::Keyboard::Y;
-	case SDLK_z: return retro3d::Keyboard::Z;
-
-	case SDLK_0: return retro3d::Keyboard::KP0;
-	case SDLK_1: return retro3d::Keyboard::KP1;
-	case SDLK_2: return retro3d::Keyboard::KP2;
-	case SDLK_3: return retro3d::Keyboard::KP3;
-	case SDLK_4: return retro3d::Keyboard::KP4;
-	case SDLK_5: return retro3d::Keyboard::KP5;
-	case SDLK_6: return retro3d::Keyboard::KP6;
-	case SDLK_7: return retro3d::Keyboard::KP7;
-	case SDLK_8: return retro3d::Keyboard::KP8;
-	case SDLK_9: return retro3d::Keyboard::KP9;
-#ifdef RETRO3D_USE_SDL1
-	case SDLK_KP0: return retro3d::Keyboard::NP0;
-	case SDLK_KP1: return retro3d::Keyboard::NP1;
-	case SDLK_KP2: return retro3d::Keyboard::NP2;
-	case SDLK_KP3: return retro3d::Keyboard::NP3;
-	case SDLK_KP4: return retro3d::Keyboard::NP4;
-	case SDLK_KP5: return retro3d::Keyboard::NP5;
-	case SDLK_KP6: return retro3d::Keyboard::NP6;
-	case SDLK_KP7: return retro3d::Keyboard::NP7;
-	case SDLK_KP8: return retro3d::Keyboard::NP8;
-	case SDLK_KP9: return retro3d::Keyboard::NP9;
-#elif defined(RETRO3D_USE_SDL2)
-	case SDLK_KP_0: return retro3d::Keyboard::NP0;
-	case SDLK_KP_1: return retro3d::Keyboard::NP1;
-	case SDLK_KP_2: return retro3d::Keyboard::NP2;
-	case SDLK_KP_3: return retro3d::Keyboard::NP3;
-	case SDLK_KP_4: return retro3d::Keyboard::NP4;
-	case SDLK_KP_5: return retro3d::Keyboard::NP5;
-	case SDLK_KP_6: return retro3d::Keyboard::NP6;
-	case SDLK_KP_7: return retro3d::Keyboard::NP7;
-	case SDLK_KP_8: return retro3d::Keyboard::NP8;
-	case SDLK_KP_9: return retro3d::Keyboard::NP9;
-#endif
-	case SDLK_KP_PLUS: return retro3d::Keyboard::NPPlus;
-	case SDLK_KP_MINUS: return retro3d::Keyboard::NPMinus;
-	case SDLK_KP_MULTIPLY: return retro3d::Keyboard::NPMul;
-	case SDLK_KP_DIVIDE: return retro3d::Keyboard::NPDiv;
-	case SDLK_KP_ENTER: return retro3d::Keyboard::NPEnter;
-
-	case SDLK_F1: return retro3d::Keyboard::F1;
-	case SDLK_F2: return retro3d::Keyboard::F2;
-	case SDLK_F3: return retro3d::Keyboard::F3;
-	case SDLK_F4: return retro3d::Keyboard::F4;
-	case SDLK_F5: return retro3d::Keyboard::F5;
-	case SDLK_F6: return retro3d::Keyboard::F6;
-	case SDLK_F7: return retro3d::Keyboard::F7;
-	case SDLK_F8: return retro3d::Keyboard::F8;
-	case SDLK_F9: return retro3d::Keyboard::F9;
-	case SDLK_F10: return retro3d::Keyboard::F10;
-	case SDLK_F11: return retro3d::Keyboard::F11;
-	case SDLK_F12: return retro3d::Keyboard::F12;
-
-	case SDLK_SPACE: return retro3d::Keyboard::Space;
-	case SDLK_RETURN: return retro3d::Keyboard::Enter;
-	case SDLK_ESCAPE: return retro3d::Keyboard::Escape;
-	case SDLK_BACKSPACE: return retro3d::Keyboard::Backspace;
-	case SDLK_RSHIFT: return retro3d::Keyboard::RShift;
-	case SDLK_LSHIFT: return retro3d::Keyboard::LShift;
-	case SDLK_RCTRL: return retro3d::Keyboard::RControl;
-	case SDLK_LCTRL: return retro3d::Keyboard::LControl;
-	case SDLK_RALT: return retro3d::Keyboard::RAlt;
-	case SDLK_LALT: return retro3d::Keyboard::LAlt;
-
-	case SDLK_UP: return retro3d::Keyboard::Up;
-	case SDLK_DOWN: return retro3d::Keyboard::Down;
-	case SDLK_LEFT: return retro3d::Keyboard::Left;
-	case SDLK_RIGHT: return retro3d::Keyboard::Right;
-
-	case SDLK_TAB: return retro3d::Keyboard::Tab;
-
-	default: break;
-	}
-	return retro3d::INPUT_COUNT;
-}
 
 #ifdef RETRO3D_USE_SDL1
 SDLKey ToSDLKeycode(uint64_t code)
-#elif defined(RETRO3D_USE_SDL2)
-SDL_Keycode ToSDLKeycode(uint64_t code)
-#endif
 {
 	switch (code) {
 	case retro3d::Keyboard::A: return SDLK_a;
@@ -162,7 +52,6 @@ SDL_Keycode ToSDLKeycode(uint64_t code)
 	case retro3d::Keyboard::KP8: return SDLK_8;
 	case retro3d::Keyboard::KP9: return SDLK_9;
 
-#ifdef RETRO3D_USE_SDL1
 	case retro3d::Keyboard::NP0: return SDLK_KP0;
 	case retro3d::Keyboard::NP1: return SDLK_KP1;
 	case retro3d::Keyboard::NP2: return SDLK_KP2;
@@ -173,18 +62,7 @@ SDL_Keycode ToSDLKeycode(uint64_t code)
 	case retro3d::Keyboard::NP7: return SDLK_KP7;
 	case retro3d::Keyboard::NP8: return SDLK_KP8;
 	case retro3d::Keyboard::NP9: return SDLK_KP9;
-#elif defined(RETRO3D_USE_SDL2)
-	case retro3d::Keyboard::NP0: return SDLK_KP_0;
-	case retro3d::Keyboard::NP1: return SDLK_KP_1;
-	case retro3d::Keyboard::NP2: return SDLK_KP_2;
-	case retro3d::Keyboard::NP3: return SDLK_KP_3;
-	case retro3d::Keyboard::NP4: return SDLK_KP_4;
-	case retro3d::Keyboard::NP5: return SDLK_KP_5;
-	case retro3d::Keyboard::NP6: return SDLK_KP_6;
-	case retro3d::Keyboard::NP7: return SDLK_KP_7;
-	case retro3d::Keyboard::NP8: return SDLK_KP_8;
-	case retro3d::Keyboard::NP9: return SDLK_KP_9;
-#endif
+
 	case retro3d::Keyboard::NPPlus: return SDLK_KP_PLUS;
 	case retro3d::Keyboard::NPMinus: return SDLK_KP_MINUS;
 	case retro3d::Keyboard::NPMul: return SDLK_KP_MULTIPLY;
@@ -226,6 +104,101 @@ SDL_Keycode ToSDLKeycode(uint64_t code)
 	}
 	return SDLK_UNKNOWN;
 }
+#elif defined(RETRO3D_USE_SDL2)
+SDL_Scancode ToSDLKeycode(uint64_t code)
+{
+	switch (code) {
+	case retro3d::Keyboard::A: return SDL_SCANCODE_A;
+	case retro3d::Keyboard::B: return SDL_SCANCODE_B;
+	case retro3d::Keyboard::C: return SDL_SCANCODE_C;
+	case retro3d::Keyboard::D: return SDL_SCANCODE_D;
+	case retro3d::Keyboard::E: return SDL_SCANCODE_E;
+	case retro3d::Keyboard::F: return SDL_SCANCODE_F;
+	case retro3d::Keyboard::G: return SDL_SCANCODE_G;
+	case retro3d::Keyboard::H: return SDL_SCANCODE_H;
+	case retro3d::Keyboard::I: return SDL_SCANCODE_I;
+	case retro3d::Keyboard::J: return SDL_SCANCODE_J;
+	case retro3d::Keyboard::K: return SDL_SCANCODE_K;
+	case retro3d::Keyboard::L: return SDL_SCANCODE_L;
+	case retro3d::Keyboard::M: return SDL_SCANCODE_M;
+	case retro3d::Keyboard::N: return SDL_SCANCODE_N;
+	case retro3d::Keyboard::O: return SDL_SCANCODE_O;
+	case retro3d::Keyboard::P: return SDL_SCANCODE_P;
+	case retro3d::Keyboard::Q: return SDL_SCANCODE_Q;
+	case retro3d::Keyboard::R: return SDL_SCANCODE_R;
+	case retro3d::Keyboard::S: return SDL_SCANCODE_S;
+	case retro3d::Keyboard::T: return SDL_SCANCODE_T;
+	case retro3d::Keyboard::U: return SDL_SCANCODE_U;
+	case retro3d::Keyboard::V: return SDL_SCANCODE_V;
+	case retro3d::Keyboard::W: return SDL_SCANCODE_W;
+	case retro3d::Keyboard::X: return SDL_SCANCODE_X;
+	case retro3d::Keyboard::Y: return SDL_SCANCODE_Y;
+	case retro3d::Keyboard::Z: return SDL_SCANCODE_Z;
+
+	case retro3d::Keyboard::KP0: return SDL_SCANCODE_0;
+	case retro3d::Keyboard::KP1: return SDL_SCANCODE_1;
+	case retro3d::Keyboard::KP2: return SDL_SCANCODE_2;
+	case retro3d::Keyboard::KP3: return SDL_SCANCODE_3;
+	case retro3d::Keyboard::KP4: return SDL_SCANCODE_4;
+	case retro3d::Keyboard::KP5: return SDL_SCANCODE_5;
+	case retro3d::Keyboard::KP6: return SDL_SCANCODE_6;
+	case retro3d::Keyboard::KP7: return SDL_SCANCODE_7;
+	case retro3d::Keyboard::KP8: return SDL_SCANCODE_8;
+	case retro3d::Keyboard::KP9: return SDL_SCANCODE_9;
+
+	case retro3d::Keyboard::NP0: return SDL_SCANCODE_KP_0;
+	case retro3d::Keyboard::NP1: return SDL_SCANCODE_KP_1;
+	case retro3d::Keyboard::NP2: return SDL_SCANCODE_KP_2;
+	case retro3d::Keyboard::NP3: return SDL_SCANCODE_KP_3;
+	case retro3d::Keyboard::NP4: return SDL_SCANCODE_KP_4;
+	case retro3d::Keyboard::NP5: return SDL_SCANCODE_KP_5;
+	case retro3d::Keyboard::NP6: return SDL_SCANCODE_KP_6;
+	case retro3d::Keyboard::NP7: return SDL_SCANCODE_KP_7;
+	case retro3d::Keyboard::NP8: return SDL_SCANCODE_KP_8;
+	case retro3d::Keyboard::NP9: return SDL_SCANCODE_KP_9;
+
+	case retro3d::Keyboard::NPPlus: return SDL_SCANCODE_KP_PLUS;
+	case retro3d::Keyboard::NPMinus: return SDL_SCANCODE_KP_MINUS;
+	case retro3d::Keyboard::NPMul: return SDL_SCANCODE_KP_MULTIPLY;
+	case retro3d::Keyboard::NPDiv: return SDL_SCANCODE_KP_DIVIDE;
+	case retro3d::Keyboard::NPEnter: return SDL_SCANCODE_KP_ENTER;
+
+	case retro3d::Keyboard::F1: return SDL_SCANCODE_F1;
+	case retro3d::Keyboard::F2: return SDL_SCANCODE_F2;
+	case retro3d::Keyboard::F3: return SDL_SCANCODE_F3;
+	case retro3d::Keyboard::F4: return SDL_SCANCODE_F4;
+	case retro3d::Keyboard::F5: return SDL_SCANCODE_F5;
+	case retro3d::Keyboard::F6: return SDL_SCANCODE_F6;
+	case retro3d::Keyboard::F7: return SDL_SCANCODE_F7;
+	case retro3d::Keyboard::F8: return SDL_SCANCODE_F8;
+	case retro3d::Keyboard::F9: return SDL_SCANCODE_F9;
+	case retro3d::Keyboard::F10: return SDL_SCANCODE_F10;
+	case retro3d::Keyboard::F11: return SDL_SCANCODE_F11;
+	case retro3d::Keyboard::F12: return SDL_SCANCODE_F12;
+
+	case retro3d::Keyboard::Space: return SDL_SCANCODE_SPACE;
+	case retro3d::Keyboard::Enter: return SDL_SCANCODE_RETURN;
+	case retro3d::Keyboard::Escape: return SDL_SCANCODE_ESCAPE;
+	case retro3d::Keyboard::Backspace: return SDL_SCANCODE_BACKSPACE;
+	case retro3d::Keyboard::RShift: return SDL_SCANCODE_RSHIFT;
+	case retro3d::Keyboard::LShift: return SDL_SCANCODE_LSHIFT;
+	case retro3d::Keyboard::RControl: return SDL_SCANCODE_RCTRL;
+	case retro3d::Keyboard::LControl: return SDL_SCANCODE_LCTRL;
+	case retro3d::Keyboard::RAlt: return SDL_SCANCODE_RALT;
+	case retro3d::Keyboard::LAlt: return SDL_SCANCODE_LALT;
+
+	case retro3d::Keyboard::Up: return SDL_SCANCODE_UP;
+	case retro3d::Keyboard::Down: return SDL_SCANCODE_DOWN;
+	case retro3d::Keyboard::Left: return SDL_SCANCODE_LEFT;
+	case retro3d::Keyboard::Right: return SDL_SCANCODE_RIGHT;
+
+	case retro3d::Keyboard::Tab: return SDL_SCANCODE_TAB;
+
+	default: break;
+	}
+	return SDL_SCANCODE_UNKNOWN;
+}
+#endif
 
 void platform::SDLInputDevice::UpdateState(retro3d::InputDevice::Input &internal_state, float api_state, double delta_time)
 {
@@ -243,12 +216,17 @@ platform::SDLInputDevice::SDLInputDevice( void ) : retro3d::InputDevice(), m_las
 
 platform::SDLInputDevice::~SDLInputDevice( void )
 {
+	std::cout << "[SDLInputDevice::dtor (" << SDL_STR << ")] Quitting subsystem SDL_JOYSTICK" << std::endl;
 	SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
 }
 
 bool platform::SDLInputDevice::Init( void )
 {
-	return SDL_InitSubSystem(SDL_INIT_JOYSTICK) == 0;
+	if (SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
+		std::cout << "[SDLInputDevice::Init (" << SDL_STR << ")] " << SDL_GetError() << std::endl;
+		return false;
+	}
+	return true;
 }
 
 bool platform::SDLInputDevice::UserQuit( void ) const
@@ -314,14 +292,12 @@ void platform::SDLInputDevice::Update( void )
 	Uint8 mouse_state = SDL_GetMouseState(&x, &y);
 
 	if (m_mouse_locked == true) {
-//		const Uint16 w2 = Uint16(GetEngine()->GetVideoDevice()->GetWindowWidth() / 2);
-//		const Uint16 h2 = Uint16(GetEngine()->GetVideoDevice()->GetWindowHeight() / 2);
+		const Uint16 w2 = Uint16(GetEngine()->GetVideo()->GetWindowWidth() / 2);
+		const Uint16 h2 = Uint16(GetEngine()->GetVideo()->GetWindowHeight() / 2);
 #ifdef RETRO3D_USE_SDL1
-		const Uint16 w2 = Uint16(SDL_GetVideoSurface()->w / 2);
-		const Uint16 h2 = Uint16(SDL_GetVideoSurface()->h / 2);
 		SDL_WarpMouse(w2, h2);
 #elif defined(RETRO3D_USE_SDL2)
-		retro3d::Point window_position = GetEngine()->GetVideoDevice()->GetWindowPosition();
+		retro3d::Point window_position = GetEngine()->GetVideo()->GetWindowPosition();
 		SDL_WarpMouseGlobal(window_position.x + int32_t(w2), window_position.y + int32_t(h2));
 #endif
 		m_state[retro3d::Mouse::MoveX].activation -= float(w2 - x);

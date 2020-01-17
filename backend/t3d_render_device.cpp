@@ -6,7 +6,6 @@
 #include "../retro3d.h"
 #include "../common/retro_transform.h"
 #include "t3d_render_device.h"
-#include <SDL/SDL.h>
 
 platform::T3DRenderDevice::Render3DJob *platform::T3DRenderDevice::Add3DJob(platform::T3DRenderDevice::Render3DJob::Type type, const mmlMatrix<4,4> &obj_to_world, retro3d::RenderDevice::LightMode light_mode)
 {
@@ -675,34 +674,6 @@ void platform::T3DRenderDevice::Print(tiny3d::URect rect)
 	}
 }
 
-void platform::T3DRenderDevice::WriteBuffers(tiny3d::URect rect)
-{
-	if (SDL_GetVideoSurface() == nullptr) { return; }
-
-	const tiny3d::UXInt vid_width  = tiny3d::UXInt(SDL_GetVideoSurface()->w);
-	const tiny3d::UXInt vid_height = tiny3d::UXInt(SDL_GetVideoSurface()->h);
-	const tiny3d::UXInt x_frac     = (tiny3d::UXInt(m_dst.GetWidth()) << 16) / vid_width;
-	const tiny3d::UXInt y_frac     = (tiny3d::UXInt(m_dst.GetHeight()) << 16) / vid_height;
-
-	tiny3d::Byte *pixel_row = reinterpret_cast<tiny3d::Byte*>(SDL_GetVideoSurface()->pixels) + rect.a.x * SDL_GetVideoSurface()->format->BytesPerPixel + rect.a.y * SDL_GetVideoSurface()->pitch;
-	for (tiny3d::UXInt y = rect.a.y; y < rect.b.y; ++y) {
-		unsigned char *pixels = pixel_row;
-		for (tiny3d::UXInt x = rect.a.x; x < rect.b.x; ++x) {
-			tiny3d::Color c = m_dst.GetColor({tiny3d::UInt((x * x_frac) >> 16), tiny3d::UInt((y * y_frac) >> 16)});
-			pixels[0] = c.b;
-			pixels[1] = c.g;
-			pixels[2] = c.r;
-			pixels += SDL_GetVideoSurface()->format->BytesPerPixel;
-		}
-		pixel_row += SDL_GetVideoSurface()->pitch;
-	}
-}
-
-void platform::T3DRenderDevice::UpdateBuffers( void )
-{
-	SDL_Flip(SDL_GetVideoSurface());
-}
-
 void platform::T3DRenderDevice::ClearJobBuffers( void )
 {
 	m_num_render_items = 0;
@@ -735,10 +706,7 @@ platform::T3DRenderDevice::T3DRenderDevice( void ) :
 }
 
 platform::T3DRenderDevice::~T3DRenderDevice( void )
-{
-	SDL_FreeSurface(SDL_GetVideoSurface());
-	SDL_QuitSubSystem(SDL_INIT_VIDEO);
-}
+{}
 
 #if defined(__linux) || defined(__linux__) || defined (__LINUX__) || defined (__gnu_linux__)
 	#undef XLIB_THREADS
@@ -749,14 +717,14 @@ platform::T3DRenderDevice::~T3DRenderDevice( void )
 	#include "X11/Xlib.h"
 #endif
 
-bool platform::T3DRenderDevice::Init(uint32_t video_width, uint32_t video_height, bool fullscreen, const std::string &caption)
+bool platform::T3DRenderDevice::Init( void )
 {
 #ifdef XLIB_THREADS
-	if (XInitThreads() != True) { return false; }
+	if (XInitThreads() != True) {
+		std::cout << "[T3DRenderDevice::Init] XInitThreads failed." << std::endl;
+		return false;
+	}
 #endif
-	if (SDL_InitSubSystem(SDL_INIT_VIDEO) == -1) { return false; }
-	if (SDL_SetVideoMode(int(video_width), int(video_height), 24, fullscreen == true ? SDL_SWSURFACE|SDL_FULLSCREEN : SDL_SWSURFACE) == nullptr) { return false; }
-	SDL_WM_SetCaption(caption.c_str(), nullptr);
 	return true;
 }
 
@@ -781,7 +749,14 @@ bool platform::T3DRenderDevice::CreateRenderSurface(uint32_t width, uint32_t hei
 		SetDepthClip(m_near_z, m_far_z, m_hfov);
 		return true;
 	}
+	std::cout << "[T3DRenderDevice::CreateRenderSurface] Failed to allocate render surface memory." << std::endl;
 	return false;
+}
+
+void platform::T3DRenderDevice::DestroyRenderSurface( void )
+{
+	m_dst.Destroy();
+	m_zbuf.Destroy();
 }
 
 void platform::T3DRenderDevice::SetViewTransform(const mmlMatrix<4,4> &world_to_view)
@@ -950,13 +925,13 @@ void platform::T3DRenderDevice::FinishRender(bool update_video_out)
 
 	const tiny3d::SInt num_threads = omp_get_num_procs();
 	const tiny3d::SInt dst_height_per_thread = tiny3d::SInt(m_dst.GetHeight()) / num_threads;
-	const tiny3d::SInt video_height_per_thread = tiny3d::SInt(SDL_GetVideoSurface()->h) / num_threads;
+	const tiny3d::SInt video_height_per_thread = tiny3d::SInt(GetEngine()->GetVideo()->GetWindowHeight()) / num_threads;
 #ifdef RETRO3D_RELEASE
 	#pragma omp parallel for
 #endif
 	for (tiny3d::SInt thread = 0; thread < num_threads; ++thread) {
 		tiny3d::URect thread_mask = { { tiny3d::UInt(0), tiny3d::UInt(thread * dst_height_per_thread)   }, { tiny3d::UInt(m_dst.GetWidth()),         tiny3d::UInt((thread + 1) * dst_height_per_thread)   } };
-		tiny3d::URect out_mask    = { { tiny3d::UInt(0), tiny3d::UInt(thread * video_height_per_thread) }, { tiny3d::UInt(SDL_GetVideoSurface()->w), tiny3d::UInt((thread + 1) * video_height_per_thread) } };
+		tiny3d::URect out_mask    = { { tiny3d::UInt(0), tiny3d::UInt(thread * video_height_per_thread) }, { tiny3d::UInt(GetEngine()->GetVideo()->GetWindowWidth()), tiny3d::UInt((thread + 1) * video_height_per_thread) } };
 		// TODO: Clearing buffers HERE
 		Render(thread_mask);
 		if (m_depth_render == true) {
@@ -966,12 +941,9 @@ void platform::T3DRenderDevice::FinishRender(bool update_video_out)
 		}
 		Print(thread_mask);
 		if (update_video_out == true) {
-			WriteBuffers(out_mask);
+			GetEngine()->GetVideo()->FromImage(m_dst, out_mask);
 		}
 		ClearBuffers(thread_mask); // TODO, NOTE, BUG, HACK: Do NOT clear buffers here
-	}
-	if (update_video_out == true) {
-		UpdateBuffers();
 	}
 	ClearJobBuffers();
 	++m_frames_rendered;

@@ -38,24 +38,13 @@ public:
 	};
 
 public:
-	// Common format used to convert the state of one API dependent render device to another API dependent render device
-	struct DataInterchange
-	{
-		// view transform
-		// jobs (models, sprites, light, aabb, text)
-		// textures, vertex arrays, other API specific stuff as platform agnostic data
-		// state (desaturation, motion blur, depth view)
-		// do not store depth or color buffers (these need to be rebuilt anyway, and going from software rendering to hardware might not like transferring pixel and depth data so easily)
-	};
-
-public:
-//	RenderDevice(const retro3d::RenderDevice::DataInterchange &data);
 	virtual ~RenderDevice( void );
 
-	virtual bool Init(uint32_t video_width, uint32_t video_height, bool fullscreen, const std::string &caption) = 0;
+	virtual bool Init( void ) = 0;
 
 	virtual void SetDepthClip(float near_z, float far_z, float hori_fov) = 0;
 	virtual bool CreateRenderSurface(uint32_t width, uint32_t height) = 0;
+	virtual void DestroyRenderSurface( void ) = 0;
 	virtual void SetViewTransform(const mmlMatrix<4,4> &world_to_view) = 0;
 	virtual void SetViewTransform(const mmlMatrix<4,4> *world_to_view) = 0;
 	virtual void SetViewTransform(const retro3d::Camera &camera) = 0;

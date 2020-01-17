@@ -2,8 +2,10 @@
 
 #ifdef RETRO3D_USE_SDL1
 	#include <SDL/SDL.h>
+	#define SDL_STR "SDL1"
 #elif defined(RETRO3D_USE_SDL2)
 	#include <SDL2/SDL.h>
+	#define SDL_STR "SDL2"
 #endif
 
 #ifdef RETRO3D_USE_SDL2
@@ -11,13 +13,6 @@
 	static SDL_Window   *Window   = nullptr;
 	static SDL_Surface  *Surface  = nullptr;
 #endif
-
-platform::SDLVideoDevice::SDLVideoDevice( void )
-{
-	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
-		std::cout << "[SDLVideoDevice::ctor] " << SDL_GetError() << std::endl;
-	}
-}
 
 platform::SDLVideoDevice::~SDLVideoDevice( void )
 {
@@ -27,7 +22,17 @@ platform::SDLVideoDevice::~SDLVideoDevice( void )
 	SDL_DestroyRenderer(Renderer);
 	SDL_DestroyWindow(Window);
 #endif
+	std::cout << "[SDLVideoDevice::dtor (" << SDL_STR << ")] Quitting subsystem SDL_VIDEO" << std::endl;
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+}
+
+bool platform::SDLVideoDevice::Init( void )
+{
+	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+		std::cout << "[SDLVideoDevice::ctor (" << SDL_STR << ")] " << SDL_GetError() << std::endl;
+		return false;
+	}
+	return true;
 }
 
 bool platform::SDLVideoDevice::CreateWindow(uint32_t width, uint32_t height, bool enable_fullscreen)
@@ -37,31 +42,31 @@ bool platform::SDLVideoDevice::CreateWindow(uint32_t width, uint32_t height, boo
 #ifdef RETRO3D_USE_SDL1
 	SDL_SetVideoMode(width, height, 24, SDL_SWSURFACE|(enable_fullscreen ? SDL_FULLSCREEN : 0));
 	if (SDL_GetVideoSurface() == nullptr) {
-		std::cout << "[SDLVideoDevice::CreateWindow (SDL1)] " << SDL_GetError() << std::endl;
+		std::cout << "[SDLVideoDevice::CreateWindow (" << SDL_STR << ")] " << SDL_GetError() << std::endl;
+		return false;
 	}
-	return SDL_GetVideoSurface() != nullptr;
 #elif defined(RETRO3D_USE_SDL2)
 	Window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_SWSURFACE|(enable_fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
 	if (Window == nullptr) {
-		std::cout << "[SDLVideoDevice::CreateWindow (SDL2)] " << SDL_GetError() << std::endl;
+		std::cout << "[SDLVideoDevice::CreateWindow (" << SDL_STR << ")] " << SDL_GetError() << std::endl;
 		return false;
 	}
 	Surface = SDL_GetWindowSurface(Window);
 	if (Surface == nullptr) {
 		SDL_DestroyWindow(Window);
 		Window = nullptr;
-		std::cout << "[SDLVideoDevice::CreateWindow (SDL2)] " << SDL_GetError() << std::endl;
+		std::cout << "[SDLVideoDevice::CreateWindow (" << SDL_STR << ")] " << SDL_GetError() << std::endl;
 		return false;
 	}
 	Renderer = SDL_CreateSoftwareRenderer(Surface);
 	if (Renderer == nullptr) {
 		SDL_DestroyWindow(Window);
 		Window = nullptr;
-		std::cout << "[SDLVideoDevice::CreateWindow (SDL2)] " << SDL_GetError() << std::endl;
+		std::cout << "[SDLVideoDevice::CreateWindow (" << SDL_STR << ")] " << SDL_GetError() << std::endl;
 		return false;
 	}
-	return true;
 #endif
+	return true;
 }
 
 void platform::SDLVideoDevice::SetWindowCaption(const std::string &caption)
@@ -86,9 +91,40 @@ void platform::SDLVideoDevice::DestroyWindow( void )
 #endif
 }
 
-void platform::SDLVideoDevice::FromImage(void *src_pixels, const retro3d::URect &src_rect, const retro3d::URect &dst_rect)
+void platform::SDLVideoDevice::FromImage(const tiny3d::Image &src, const retro3d::URect &dst_rect)
 {
 	// TODO: From a surface that the renderer used to the surface the video uses
+	// NOTE: Transfers src to video out.
+	// NOTE: Requires the target and destination buffer to be the same ratio in both dimensions.
+
+	SDL_Surface *video_out =
+		#ifdef RETRO3D_USE_SDL1
+			SDL_GetVideoSurface()
+		#elif defined(RETRO3D_USE_SDL2)
+			Surface
+		#endif
+	;
+
+	if (video_out == nullptr)                                                          { return; }
+	if (float(src.GetWidth()) / video_out->w != float(src.GetHeight()) / video_out->h) { return; } // NOTE: This enforces that aspect ratio on src has to be the same as dst.
+
+	const tiny3d::UXInt vid_width  = tiny3d::UXInt(video_out->w);
+	const tiny3d::UXInt vid_height = tiny3d::UXInt(video_out->h);
+	const tiny3d::UXInt x_frac     = (tiny3d::UXInt(src.GetWidth()) << 16) / vid_width;
+	const tiny3d::UXInt y_frac     = (tiny3d::UXInt(src.GetHeight()) << 16) / vid_height;
+
+	tiny3d::Byte *pixel_row = reinterpret_cast<tiny3d::Byte*>(video_out->pixels) + dst_rect.a.x * video_out->format->BytesPerPixel + dst_rect.a.y * video_out->pitch;
+	for (tiny3d::UXInt y = dst_rect.a.y; y < dst_rect.b.y; ++y) {
+		tiny3d::Byte *pixels = pixel_row;
+		for (tiny3d::UXInt x = dst_rect.a.x; x < dst_rect.b.x; ++x) {
+			tiny3d::Color c = src.GetColor({tiny3d::UInt((x * x_frac) >> 16), tiny3d::UInt((y * y_frac) >> 16)});
+			pixels[0] = c.b;
+			pixels[1] = c.g;
+			pixels[2] = c.r;
+			pixels += video_out->format->BytesPerPixel;
+		}
+		pixel_row += video_out->pitch;
+	}
 }
 
 retro3d::Point platform::SDLVideoDevice::GetWindowPosition( void ) const
@@ -102,7 +138,7 @@ retro3d::Point platform::SDLVideoDevice::GetWindowPosition( void ) const
 	return p;
 }
 
-void platform::SDLVideoDevice::Display(const retro3d::URect &rect)
+void platform::SDLVideoDevice::Display(const retro3d::Rect &rect)
 {
 	SDL_Rect r;
 	r.x = rect.a.x;
@@ -114,6 +150,15 @@ void platform::SDLVideoDevice::Display(const retro3d::URect &rect)
 	SDL_UpdateRect(SDL_GetVideoSurface(), r.x, r.y, r.w, r.h);
 #elif defined(RETRO3D_USE_SDL2)
 	SDL_UpdateWindowSurfaceRects(Window, &r, 1);
+#endif
+}
+
+void platform::SDLVideoDevice::Display( void )
+{
+#ifdef RETRO3D_USE_SDL1
+	SDL_Flip(SDL_GetVideoSurface());
+#elif defined(RETRO3D_USE_SDL2)
+	SDL_UpdateWindowSurface(Window);
 #endif
 }
 
