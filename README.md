@@ -201,8 +201,6 @@ Compiling with support for SDL requires additional compilation steps. First the 
 
 Compiling with support for the tiny3d render device requires the user to compile with support for threading and OpenMP. OpenMP should ship as a standard library with most compilers, so there should be no need to install it manually. The compiler may need to have the ```openmp``` flag sent to it for the build stage, while the linker requires a reference to the ```openmp``` library. Some systems (Linux) requires the user to also link against ```X11``` and ```pthread``` for threading to work.
 
-
-
 ## Credits
 
 The images and videos above include content from the following creators:
