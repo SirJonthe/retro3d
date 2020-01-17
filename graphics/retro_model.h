@@ -72,7 +72,6 @@ struct Model : public retro3d::Asset<Model>
 	void     AppendModel(const retro3d::Model &model, const retro3d::Transform &transform);
 	void     RefreshConnectivity( void );
 	void     DefragIndex( void );
-	void     Split(const retro3d::Plane &p, retro3d::Model *front, retro3d::Model *back) const;
 };
 
 // Vertex
@@ -165,7 +164,9 @@ void         ExtractFaceTCoords(const retro3d::Array< mmlVector<2> > &t, const r
 void         InsertFaceTCoords(retro3d::Array< mmlVector<2> > &t, const retro3d::FaceIndex &f, const retro3d::Array< mmlVector<2> > &in);
 
 // Topography
-bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::Material > &m);
+bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexV > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexVN > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndex > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
 void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > *hull_verts, retro3d::Array< retro3d::FaceIndex > *hull_faces);
 
 class ModelConstructor
@@ -190,6 +191,7 @@ private:
 	Map< mmlVector<2> >         t;
 	Map< mmlVector<3> >         n;
 	retro3d::Array<MaterialMap> m;
+	Map<FaceMap>                f;
 	mtlShared<retro3d::Texture> lightmap;
 	retro3d::AABB               aabb;
 
@@ -209,6 +211,7 @@ public:
 //	void InsertMaterial();
 	void Destroy( void );
 	void Split(const retro3d::Plane &plane, retro3d::ModelConstructor *front, retro3d::ModelConstructor *back);
+	bool CalculateConvexity( void ) const;
 	void Debug_PrintMaterials( void ) const;
 };
 

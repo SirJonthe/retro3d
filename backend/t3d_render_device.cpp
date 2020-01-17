@@ -711,7 +711,7 @@ void platform::T3DRenderDevice::ClearJobBuffers( void )
 }
 
 platform::T3DRenderDevice::T3DRenderDevice( void ) :
-	m_dst(), m_zbuf(), m_vbuffer(),
+	m_dst(), m_zbuf(),
 	m_world_to_view(mmlMatrix<4,4>::Identity()), m_view_to_world(mmlMatrix<4,4>::Identity()), m_world_to_view_ptr(&m_world_to_view),
 	m_near_z(1.0f), m_far_z(100.0f), m_hfov(mmlPI/2.0f), m_aspect_ratio(1.0f), m_near_plane(mmlVector<3>(0.0, 0.0, double(m_near_z)), retro3d::Transform::GetWorldForward()),
 	m_print_queue(512), m_num_print_items(0),

@@ -6,6 +6,13 @@
 #include "../common/retro_assert.h"
 #include "retro_import.h"
 
+#ifdef RETRO3D_USE_SDL1
+	#include <SDL/SDL.h>
+#elif defined(RETRO3D_USE_SDL2)
+	#include <SDL2/SDL.h>
+#endif
+
+
 using namespace tiny3d;
 using namespace retro3d;
 
@@ -468,7 +475,6 @@ bool retro3d::LoadOBJ(const std::string &file, retro3d::Array< mmlVector<3> > *v
 	return retro3d::LoadOBJ(reader, v, t, n, m);
 }
 
-#include <SDL/SDL.h>
 // http://sdl.beuc.net/sdl.wiki/Pixel_Access
 Uint32 GetPixel(SDL_Surface *surface, UInt x, UInt y)
 {

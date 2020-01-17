@@ -169,7 +169,7 @@ void retro3d::PhysicsProperties::StepSimulation(float time_delta)
 	retro3d::Transform *t = m_transform.GetShared();
 	t->SetPosition(t->GetPosition() + m_linear_velocity * time_delta);
 	const float len2 = m_angular_velocity.Len2();
-	if (mmlIsApproxZero(len2) == false) {
+	if (mmlIsApproxEqual(len2, 0.0f) == false) {
 		const float len = mmlSqrt(len2); // NOTE: 'len' is not an angle, but a distance. Need to convert to radians (see below).
 		t->SetBasis(mmlOrthoNormalize(mmlAxisAngle(m_angular_velocity / len, len * 2.0f * mmlPI * time_delta) * t->GetBasis()));
 	}
@@ -338,7 +338,7 @@ void retro3d::PhysicsIntegrator::Simulate(float delta_time)
 			// we simulated too far, so subdivide time and try again
 			target_time = (current_time + target_time) / 2.0f;
 
-			if (mmlIsApproxZero(target_time - current_time)) {
+			if (mmlIsApproxEqual(target_time - current_time, 0.0f)) {
 				break;
 			}
 

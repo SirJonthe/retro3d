@@ -2,6 +2,7 @@
 #define RETRO_INPUT_DEVICE_H
 
 #include <cstdint>
+#include "retro_device.h"
 #include "../common/MiniLib/MTL/mtlArray.h"
 #include "../common/MiniLib/MTL/mtlStringMap.h"
 #include "../api/tiny3d/tiny_system.h"
@@ -21,7 +22,7 @@ public:
 	const uint64_t *GetInput(const mtlChars &action) const;
 };
 
-class InputDevice
+class InputDevice : public retro3d::Device
 {
 public:
 	struct Input

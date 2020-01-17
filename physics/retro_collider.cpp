@@ -259,7 +259,7 @@ mmlVector<3> EPA(const Simplex &s, const retro3d::Collider &coll1, const retro3d
 //			const float bias = 0.000001f; //in case dot result is only slightly < 0 (because origin is on face)
 //			if (mmlDot(faces[num_faces][0], faces[num_faces][3]) + bias < 0.0f) {
 			const float dot = mmlDot(faces[num_faces][0], faces[num_faces][3]);
-			if (dot < 0.0f && mmlIsApproxZero(dot, 0.000001f) == false) {
+			if (dot < 0.0f && mmlIsApproxEqual(dot, 0.0f, 0.000001f) == false) {
 				mmlVector<3> temp = faces[num_faces][0];
 				faces[num_faces][0] = faces[num_faces][1];
 				faces[num_faces][1] = temp;
@@ -320,7 +320,7 @@ bool retro3d::Collider::GJK_DetectCollision(const retro3d::Collider &a, const re
 		} else if (update_simplex4(s, search_dir) == true) {
 			mmlVector<3> epa = EPA(s, a, b, contact_info->point);
 			contact_info->depth = epa.Len();
-			contact_info->normal = mmlIsApproxZero(epa) == false ? epa / contact_info->depth : mmlVector<3>::Fill(0.0f);
+			contact_info->normal = mmlIsApproxEqual(contact_info->depth, 0.0f) == false ? epa / contact_info->depth : mmlVector<3>::Fill(0.0f);
 			return true;
 		}
 	}

@@ -305,192 +305,6 @@ void retro3d::Model::DefragIndex( void )
 #endif
 }
 
-struct IntIndex { uint64_t v, t, n; };
-struct IntFace { retro3d::Array<IntIndex> i; };
-struct IntMaterial { retro3d::Array<IntFace> f; };
-struct IntModel
-{
-	retro3d::Array<IntMaterial>                  m;
-	std::unordered_map< uint64_t, mmlVector<3> > v;
-	std::unordered_map< uint64_t, mmlVector<2> > t;
-	std::unordered_map< uint64_t, mmlVector<3> > n;
-};
-
-uint64_t map1(int32_t a)
-{
-	const uint32_t ua = *reinterpret_cast<uint32_t*>(&a);
-	return uint64_t(ua);
-}
-
-uint64_t map2(int32_t a, int32_t b)
-{
-	// NOTE: A unique hash of two indices where h(a,b) = h(b,a)
-	const uint32_t ua = *reinterpret_cast<uint32_t*>(&a);
-	const uint32_t ub = *reinterpret_cast<uint32_t*>(&b);
-	return (uint64_t( (a > b ? ua : ub) ) << 32) | uint64_t( a > b ? ub : ua );
-
-	return (map1(mmlMin(a, b)) << 32) | map1(mmlMax(a, b));
-}
-
-void store_vert(const retro3d::Array<mmlVector<3> > &fv, const retro3d::Array< mmlVector<2> > &ft, const retro3d::Array< mmlVector<3> > &fn, const retro3d::FaceIndex &fi, const retro3d::Array<mmlVector<3> > &v, IntModel &out, int32_t current_m)
-{
-	// NOTE, TODO: What should I do when fi contains negative indices???
-
-	RETRO3D_ASSERT(fv.GetSize() == ft.GetSize() && fv.GetSize() == fn.GetSize());
-
-	IntFace *out_face = &out.m[current_m].f.Add();
-	out_face->i.Create(fv.GetSize());
-
-	int32_t c = 0; // NOTE: (c)lipped index.
-	int32_t u = 0; // NOTE: (u)nclipped index.
-
-	uint64_t hv = 0;
-	uint64_t ht = 0;
-	uint64_t hn = 0;
-	while (c < fv.GetSize()) {
-		if (fv[c] == v[fi[u].v]) {
-
-			hv = map1(fi[u].v);
-			ht = map1(fi[u].t);
-			hn = map1(fi[u].n);
-
-			u = (u + 1) % fi.GetSize();
-		} else {
-			// c is not in the vertex list at all, check its neighbor indices (a clipped vertex must have 1 neighbor that is clipped and 1 neighbor that is NOT clipped)
-			const int32_t c0 = (c - 1) % fv.GetSize();
-			const int32_t c1 = (c + 1) % fv.GetSize();
-
-			// NOTE: Iterate u until u matches c0 or c1.
-			while (fv[c0] != v[fi[u].v] && fv[c1] != v[fi[u].v]) {
-				++u;
-			}
-			const int32_t u0 = (u - 1) & fi.GetSize();
-
-			// NOTE: Create a hashed index that is a combination of the vertices that form the edge (because the clipped vertex lies on the edge).
-			hv = map2(fi[u].v, fi[u0].v);
-			ht = map2(fi[u].t, fi[u0].t);
-			hn = map2(fi[u].n, fi[u0].n);
-		}
-
-		out.v[hv] = fv[c];
-		out.t[ht] = ft[c];
-		out.n[hn] = fn[c];
-
-		out_face->i[c].v = hv;
-		out_face->i[c].t = ht;
-		out_face->i[c].n = hn;
-
-		++c;
-	}
-}
-
-void flush_to_model(const IntModel &in, retro3d::Model &out)
-{
-	int32_t i;
-	std::unordered_map<uint64_t, int32_t> v_table;
-	std::unordered_map<uint64_t, int32_t> t_table;
-	std::unordered_map<uint64_t, int32_t> n_table;
-
-	v_table.reserve(in.v.size());
-	out.v.Create(int(in.v.size()));
-	i = 0;
-	for (auto it = in.v.begin(); it != in.v.end(); ++it) {
-		out.v[i] = it->second;
-		v_table[it->first] = i;
-		++i;
-	}
-
-	t_table.reserve(in.t.size());
-	out.t.Create(int(in.t.size()));
-	i = 0;
-	for (auto it = in.t.begin(); it != in.t.end(); ++it) {
-		out.t[i] = it->second;
-		t_table[it->first] = i;
-		++i;
-	}
-
-	n_table.reserve(in.n.size());
-	out.n.Create(int(in.n.size()));
-	i = 0;
-	for (auto it = in.n.begin(); it != in.n.end(); ++it) {
-		out.n[i] = it->second;
-		n_table[it->first] = i;
-		++i;
-	}
-
-	out.m.Create(in.m.GetSize());
-	i = 0;
-	for (; i < out.m.GetSize(); ++i) {
-		out.m[i].f.Create(in.m[i].f.GetSize());
-		for (int32_t f = 0; f < out.m[i].f.GetSize(); ++f) {
-			out.m[i].f[f].Create(in.m[i].f[f].i.GetSize());
-			for (int32_t v = 0; v < out.m[i].f[f].GetSize(); ++v) {
-				out.m[i].f[f][v].v = v_table[in.m[i].f[f].i[v].v];
-				out.m[i].f[f][v].t = t_table[in.m[i].f[f].i[v].t];
-				out.m[i].f[f][v].n = n_table[in.m[i].f[f].i[v].n];
-			}
-		}
-	}
-}
-
-#include "../common/MiniLib/MGL/mglCollision.h"
-
-void retro3d::Model::Split(const retro3d::Plane &p, retro3d::Model *front, retro3d::Model *back) const
-{
-	if (front == nullptr && back == nullptr) { return; }
-
-	// NOTE: Intermediate model formats.
-	IntModel                       f,  b;
-
-	// NOTE: Front and back vertex attributes of individual faces.
-	retro3d::Array< mmlVector<3> > fv, bv;
-	retro3d::Array< mmlVector<2> > ft, bt;
-	retro3d::Array< mmlVector<3> > fn, bn;
-	retro3d::Array< mmlVector<3> > cv;
-	retro3d::Array< mmlVector<2> > ct;
-	retro3d::Array< mmlVector<3> > cn;
-
-	if (front != nullptr) { f.m.Create(m.GetSize()); }
-	if (back  != nullptr) { b.m.Create(m.GetSize()); }
-
-	for (int mi = 0; mi < m.GetSize(); ++mi) {
-		auto *mat = &m[mi];
-
-		if (front != nullptr) { f.m[mi].f.SetCapacity(mat->f.GetSize()); }
-		if (back  != nullptr) { f.m[mi].f.SetCapacity(mat->f.GetSize()); }
-
-		for (int fi = 0; fi < mat->f.GetSize(); ++fi) {
-			auto *face = &mat->f[fi];
-
-			// NOTE: Serialize face attributes into separate arrays.
-			retro3d::ExtractFaceVertices(v, *face, cv);
-			retro3d::ExtractFaceTCoords(t, *face, ct);
-			retro3d::ExtractFaceNormals(n, *face, cn);
-
-			// NOTE: Perform clipping on attributes.
-			p.Clip(cv, cv, (front != nullptr) ? &fv : nullptr, (back != nullptr) ? &bv : nullptr);
-			p.Clip(cv, ct, (front != nullptr) ? &ft : nullptr, (back != nullptr) ? &bt : nullptr);
-			p.Clip(cv, cn, (front != nullptr) ? &fn : nullptr, (back != nullptr) ? &bn : nullptr);
-
-			// TODO: Store the clipped elements
-			if (front != nullptr && fv.GetSize() > 0) {
-				store_vert(fv, ft, fn, *face, v, f, mi);
-			}
-			if (back != nullptr && bv.GetSize() > 0) {
-				store_vert(bn, bt, bn, *face, v, b, mi);
-			}
-		}
-	}
-
-	// TODO: convert IntModel to Model, store f -> front, b -> back
-	if (front != nullptr) {
-		flush_to_model(f, *front);
-	}
-	if (back != nullptr) {
-		flush_to_model(b, *back);
-	}
-}
-
 void retro3d::TransformVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::Transform &t)
 {
 	const mmlMatrix<4,4> m = t.GetFinalMatrix();
@@ -574,97 +388,91 @@ bool retro3d::CalculatePointInConvexHull(const retro3d::Array< mmlVector<3> > &h
 	return (c - p).Len2() < (c - m).Len2();
 }
 
-void retro3d::ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<3> > &out)
+namespace impl
 {
-	out.Create(f.GetSize());
-	for (int i = 0; i < out.GetSize(); ++i) {
-		if (f[i].v >= 0 && f[i].v < v.GetSize()) {
-			out[i] = v[f[i].v];
-		} else {
-			out[i] = mmlVector<3>::Fill(0.0f);
+	template < typename index_t >
+	void ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const index_t &f, retro3d::Array< mmlVector<3> > &out)
+	{
+		out.Create(f.GetSize());
+		for (int i = 0; i < out.GetSize(); ++i) {
+			if (f[i].v >= 0 && f[i].v < v.GetSize()) {
+				out[i] = v[f[i].v];
+			} else {
+				out[i] = mmlVector<3>::Fill(0.0f);
+			}
 		}
 	}
+}
+
+void retro3d::ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<3> > &out)
+{
+	impl::ExtractFaceVertices(v, f, out);
 }
 
 void retro3d::ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexV &f, retro3d::Array< mmlVector<3> > &out)
 {
-	out.Create(f.GetSize());
-	for (int i = 0; i < out.GetSize(); ++i) {
-		if (f[i].v >= 0 && f[i].v < v.GetSize()) {
-			out[i] = v[f[i].v];
-		} else {
-			out[i] = mmlVector<3>::Fill(0.0f);
-		}
-	}
+	impl::ExtractFaceVertices(v, f, out);
 }
 
 void retro3d::ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexVN &f, retro3d::Array< mmlVector<3> > &out)
 {
-	out.Create(f.GetSize());
-	for (int i = 0; i < out.GetSize(); ++i) {
-		if (f[i].v >= 0 && f[i].v < v.GetSize()) {
-			out[i] = v[f[i].v];
-		} else {
-			out[i] = mmlVector<3>::Fill(0.0f);
+	impl::ExtractFaceVertices(v, f, out);
+}
+
+namespace impl
+{
+	template < typename index_t >
+	void InsertFaceVertices(retro3d::Array< mmlVector<3> > &v, const index_t &f, const retro3d::Array< mmlVector<3> > &in)
+	{
+		RETRO3D_ASSERT(f.GetSize() == in.GetSize());
+		for (int i = 0; i < in.GetSize(); ++i) {
+			if (f[i].v >= 0 && f[i].v < v.GetSize()) {
+				v[f[i].v] = in[i];
+			}
 		}
 	}
 }
 
 void retro3d::InsertFaceVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndex &f, const retro3d::Array< mmlVector<3> > &in)
 {
-	RETRO3D_ASSERT(f.GetSize() == in.GetSize());
-	for (int i = 0; i < in.GetSize(); ++i) {
-		if (f[i].v >= 0 && f[i].v < v.GetSize()) {
-			v[f[i].v] = in[i];
-		}
-	}
+	impl::InsertFaceVertices(v, f, in);
 }
 
 void retro3d::InsertFaceVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexV &f, const retro3d::Array< mmlVector<3> > &in)
 {
-	RETRO3D_ASSERT(f.GetSize() == in.GetSize());
-	for (int i = 0; i < in.GetSize(); ++i) {
-		if (f[i].v >= 0 && f[i].v < v.GetSize()) {
-			v[f[i].v] = in[i];
-		}
-	}
+	impl::InsertFaceVertices(v, f, in);
 }
 
 void retro3d::InsertFaceVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexVN &f, const retro3d::Array< mmlVector<3> > &in)
 {
-	RETRO3D_ASSERT(f.GetSize() == in.GetSize());
-	for (int i = 0; i < in.GetSize(); ++i) {
-		if (f[i].v >= 0 && f[i].v < v.GetSize()) {
-			v[f[i].v] = in[i];
+	impl::InsertFaceVertices(v, f, in);
+}
+
+namespace impl
+{
+	template < typename index_t >
+	void InvertFaces(retro3d::Array< index_t > &f) {
+		for (int i = 0; i < f.GetSize(); ++i) {
+			for (int j = 0; j < f[i].GetSize() / 2; ++j) {
+				mmlSwap(f[i][j], f[i][f[i].GetSize() - j - 1]);
+			}
 		}
 	}
 }
 
 void retro3d::InvertFaces(retro3d::Array<FaceIndex> &f)
 {
-	for (int i = 0; i < f.GetSize(); ++i) {
-		for (int j = 0; j < f[i].GetSize() / 2; ++j) {
-			mmlSwap(f[i][j], f[i][f[i].GetSize() - j - 1]);
-		}
-	}
+	impl::InvertFaces(f);
 }
 
 void retro3d::InvertFaces(retro3d::Array<FaceIndexVN> &f)
 {
-	for (int i = 0; i < f.GetSize(); ++i) {
-		for (int j = 0; j < f[i].GetSize() / 2; ++j) {
-			mmlSwap(f[i][j], f[i][f[i].GetSize() - j - 1]);
-		}
-	}
+	impl::InvertFaces(f);
 }
 
 void retro3d::InvertFaces(retro3d::Array<FaceIndexV> &f)
 {
-	for (int i = 0; i < f.GetSize(); ++i) {
-		for (int j = 0; j < f[i].GetSize() / 2; ++j) {
-			mmlSwap(f[i][j], f[i][f[i].GetSize() - j - 1]);
-		}
-	}
+	impl::InvertFaces(f);
 }
 
 void retro3d::InvertNormals(retro3d::Array< mmlVector<3> > &n)
@@ -813,46 +621,53 @@ void retro3d::CalculateFaceNormals(const retro3d::Array< mmlVector<3> > &v, retr
 	}
 }
 
-void retro3d::ExtractFaceNormals(const retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<3> > &out)
+namespace impl
 {
-	out.Create(f.GetSize());
-	for (int i = 0; i < out.GetSize(); ++i) {
-		if (f[i].n >= 0 && f[i].n < n.GetSize()) {
-			out[i] = n[f[i].n];
-		} else {
-			out[i] = mmlVector<3>::Fill(0.0f);
-		}
-	}
-}
-void retro3d::ExtractFaceNormals(const retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndexVN &f, retro3d::Array< mmlVector<3> > &out)
-{
-	out.Create(f.GetSize());
-	for (int i = 0; i < out.GetSize(); ++i) {
-		if (f[i].n >= 0 && f[i].n < n.GetSize()) {
-			out[i] = n[f[i].n];
-		} else {
-			out[i] = mmlVector<3>::Fill(0.0f);
-		}
-	}
-}
-void retro3d::InsertFaceNormals(retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndex &f, const retro3d::Array< mmlVector<3> > &in)
-{
-	RETRO3D_ASSERT(f.GetSize() == in.GetSize());
-	for (int i = 0; i < in.GetSize(); ++i) {
-		if (f[i].n >= 0 && f[i].n < n.GetSize()) {
-			n[f[i].n] = in[i];
+	template < typename index_t >
+	void ExtractFaceNormals(const retro3d::Array< mmlVector<3> > &n, const index_t &f, retro3d::Array< mmlVector<3> > &out)
+	{
+		out.Create(f.GetSize());
+		for (int i = 0; i < out.GetSize(); ++i) {
+			if (f[i].n >= 0 && f[i].n < n.GetSize()) {
+				out[i] = n[f[i].n];
+			} else {
+				out[i] = mmlVector<3>::Fill(0.0f);
+			}
 		}
 	}
 }
 
-void retro3d::InsertFaceNormal(retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndexVN &f, const retro3d::Array< mmlVector<3> > &in)
+void retro3d::ExtractFaceNormals(const retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<3> > &out)
 {
-	RETRO3D_ASSERT(f.GetSize() == in.GetSize());
-	for (int i = 0; i < in.GetSize(); ++i) {
-		if (f[i].n >= 0 && f[i].n < n.GetSize()) {
-			n[f[i].n] = in[i];
+	impl::ExtractFaceNormals(n, f, out);
+}
+void retro3d::ExtractFaceNormals(const retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndexVN &f, retro3d::Array< mmlVector<3> > &out)
+{
+	impl::ExtractFaceNormals(n, f, out);
+}
+
+namespace impl
+{
+	template < typename index_t >
+	void InsertFaceNormals(retro3d::Array< mmlVector<3> > &n, const index_t &f, const retro3d::Array< mmlVector<3> > &in)
+	{
+		RETRO3D_ASSERT(f.GetSize() == in.GetSize());
+		for (int i = 0; i < in.GetSize(); ++i) {
+			if (f[i].n >= 0 && f[i].n < n.GetSize()) {
+				n[f[i].n] = in[i];
+			}
 		}
 	}
+}
+
+void retro3d::InsertFaceNormals(retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndex &f, const retro3d::Array< mmlVector<3> > &in)
+{
+	impl::InsertFaceNormals(n, f, in);
+}
+
+void retro3d::InsertFaceNormal(retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndexVN &f, const retro3d::Array< mmlVector<3> > &in)
+{
+	impl::InsertFaceNormals(n, f, in);
 }
 
 void retro3d::ExtractFaceTCoords(const retro3d::Array< mmlVector<2> > &t, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<2> > &out)
@@ -877,29 +692,41 @@ void retro3d::InsertFaceTCoords(retro3d::Array< mmlVector<2> > &t, const retro3d
 	}
 }
 
-bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::Material > &m)
+namespace impl
 {
-	// Algorithm:
-		// For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
-	for (int m0 = 0; m0 < m.GetSize(); ++m0) {
-		const retro3d::Material *split_material = &m[m0];
-		for (int f0 = 0; f0 < split_material->f.GetSize(); ++f0) {
-			const retro3d::FaceIndex *split_face = &split_material->f[f0];
-			const retro3d::Plane plane(v[(*split_face)[0].v], v[(*split_face)[1].v], v[(*split_face)[2].v]);
-			for (int m1 = 0; m1 < m.GetSize(); ++m1) {
-				const retro3d::Material *material = &m[m1];
-				for (int f = 0; f < material->f.GetSize(); ++f) {
-					if (m1 == m0 && f == f0) { continue; }
-					const retro3d::FaceIndex *face = &material->f[f];
-					for (int v0 = 0; v0 < face->GetSize(); ++v0) {
-						mmlVector<3> vcoord = v[(*face)[v0].v];
-						if (plane.DetermineSide(vcoord) > 0) { return false; } // current vertex is in front of current plane, i.e. not convex
-					}
+	template < typename index_t >
+	bool IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< index_t > &f, float FP_EPSILON)
+	{
+		// NOTE: Assertion = For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
+		for (int32_t f0 = 0; f0 < f.GetSize() - 1; ++f0) {
+			const index_t *face0 = &f[f0];
+			const retro3d::Plane plane(v[(*face0)[0].v], v[(*face0)[1].v], v[(*face0)[2].v]);
+			for (int32_t f1 = 1; f1 < f.GetSize(); ++f1) {
+				const index_t *face1 = &f[f1];
+				const int32_t vert_count = face1->GetSize();
+				for (int32_t v0 = 0; v0 < vert_count; ++v0) {
+					const mmlVector<3> vcoord = v[(*face1)[v0].v];
+					if (plane.DetermineSide(vcoord, FP_EPSILON) > 0) { return false; } // NOTE: Current vertex is in front of current plane, i.e. not convex.
 				}
 			}
 		}
+		return true; // NOTE: Passed all tests, i.e. convex.
 	}
-	return true; // passed all tests, i.e. convex
+}
+
+bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexV > &f, float FP_EPSILON)
+{
+	return impl::IsConvex(v, f, FP_EPSILON);
+}
+
+bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexVN > &f, float FP_EPSILON)
+{
+	return impl::IsConvex(v, f, FP_EPSILON);
+}
+
+bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndex > &f, float FP_EPSILON)
+{
+	return impl::IsConvex(v, f, FP_EPSILON);
 }
 
 uint64_t retro3d::ModelConstructor::Hash(int32_t a)
@@ -915,7 +742,7 @@ uint64_t retro3d::ModelConstructor::Hash(int32_t a, int32_t b)
 	const uint32_t ub = *reinterpret_cast<uint32_t*>(&b);
 	return (uint64_t( (a > b ? ua : ub) ) << 32) | uint64_t( a > b ? ub : ua );
 
-	return (map1(mmlMin(a, b)) << 32) | map1(mmlMax(a, b));
+	return (Hash(mmlMin(a, b)) << 32) | Hash(mmlMax(a, b));
 }
 
 void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out, const retro3d::ModelConstructor::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
@@ -1273,6 +1100,11 @@ void retro3d::ModelConstructor::Split(const retro3d::Plane &plane, retro3d::Mode
 			back->Destroy();
 		}
 	}
+}
+
+bool retro3d::ModelConstructor::CalculateConvexity( void ) const
+{
+	return false;
 }
 
 void retro3d::ModelConstructor::Debug_PrintMaterials( void ) const

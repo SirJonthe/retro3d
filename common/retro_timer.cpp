@@ -125,7 +125,7 @@ double retro3d::Timer::GetTime( void ) const
 	return double(m_acc_time) / double(m_beat_interval);
 }
 
-int retro3d::Timer::GetBeats( void ) const
+int32_t retro3d::Timer::GetBeats( void ) const
 {
 	UpdateTimer();
 	return int(m_acc_time / m_beat_interval);

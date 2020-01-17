@@ -48,11 +48,11 @@ float retro3d::Light::CalculateIntensityAtVertex(const mmlVector<3> &point, cons
 		i = -mmlDot(direction, normal);
 		break;
 	case retro3d::Light::Point:
-		i = mmlDot(mmlIsApproxZero(dist) ? direction : (mmlIsApproxEqual(dist, -1.0f) ? retro3d::NormalFromAToB(point, origin) : (retro3d::VectorFromAToB(point, origin) / dist)), normal);
+		i = mmlDot(mmlIsApproxEqual(dist, 0.0f) ? direction : (mmlIsApproxEqual(dist, -1.0f) ? retro3d::NormalFromAToB(point, origin) : (retro3d::VectorFromAToB(point, origin) / dist)), normal);
 		break;
 	case retro3d::Light::Spot:
 		{
-			i = mmlMax(0.0f, -mmlDot(direction, normal)) * mmlDot(mmlIsApproxZero(dist) ? direction : (mmlIsApproxEqual(dist, -1.0f) ? retro3d::NormalFromAToB(point, origin) : (retro3d::VectorFromAToB(point, origin) / dist)), normal) / aperture;
+			i = mmlMax(0.0f, -mmlDot(direction, normal)) * mmlDot(mmlIsApproxEqual(dist, 0.0f) ? direction : (mmlIsApproxEqual(dist, -1.0f) ? retro3d::NormalFromAToB(point, origin) : (retro3d::VectorFromAToB(point, origin) / dist)), normal) / aperture;
 		}
 		break;
 	default:

@@ -14,6 +14,7 @@
 #include "serial/retro_import.h"
 #include "frontend/retro_sound_device.h"
 #include "frontend/retro_input_device.h"
+#include "frontend/retro_video_device.h"
 
 namespace retro3d
 {
@@ -31,6 +32,7 @@ private:
 	retro3d::RenderDevice                 *m_renderer;
 	retro3d::SoundDevice                  *m_sound;
 	retro3d::InputDevice                  *m_input;
+	retro3d::VideoDevice                  *m_video;
 	const retro3d::Camera                 *m_camera;
 	retro3d::Camera                        m_default_camera;
 	mtlList< mtlShared<retro3d::Object> >  m_objects;
@@ -89,6 +91,7 @@ public:
 	template < typename render_dev_t > void CreateRenderDevice( void );
 	template < typename sound_dev_t >  void CreateSoundDevice( void );
 	template < typename input_dev_t >  void CreateInputDevice( void );
+	template < typename video_dev_t >  void CreateVideoDevice( void );
 
 	void                   SetCamera(const retro3d::Camera *camera);
 	void                   DefaultCamera( void );
@@ -100,6 +103,8 @@ public:
 	const retro3d::SoundDevice  *GetSoundDevice( void ) const;
 	retro3d::InputDevice        *GetInput( void );
 	const retro3d::InputDevice  *GetInput( void ) const;
+	retro3d::VideoDevice        *GetVideo( void );
+	const retro3d::VideoDevice  *GetVideo( void ) const;
 
 	double   Time( void ) const;
 	double   DeltaTime( void ) const;
@@ -148,6 +153,7 @@ void retro3d::Engine::CreateRenderDevice( void )
 	// TODO: Do a "hand-over" between old render device and new render device so that the state is preserved
 	delete m_renderer;
 	m_renderer = new render_dev_t;
+	m_renderer->m_engine = this;
 }
 
 template < typename sound_dev_t >
@@ -156,6 +162,7 @@ void retro3d::Engine::CreateSoundDevice( void )
 	// TODO: Do a "hand-over" between old sound device and new sound device so that the state is preserved
 	delete m_sound;
 	m_sound = new sound_dev_t;
+	m_sound->m_engine = this;
 }
 
 template < typename input_dev_t >
@@ -164,6 +171,15 @@ void retro3d::Engine::CreateInputDevice( void )
 	// TODO: Do a "hand-over" between old input device and new input device so that the state is preserved
 	delete m_input;
 	m_input = new input_dev_t;
+	m_input->m_engine = this;
+}
+
+template < typename video_dev_t >
+void retro3d::Engine::CreateVideoDevice( void )
+{
+	delete m_video;
+	m_video = new video_dev_t;
+	m_video->m_engine = this;
 }
 
 #include "ecs/retro_entity.h"

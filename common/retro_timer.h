@@ -54,7 +54,7 @@ public:
 
 	uint64_t GetFixedTime( void ) const;
 	double   GetTime( void ) const;
-	int      GetBeats( void ) const;
+	int32_t  GetBeats( void ) const;
 	double   GetPartBeat( void ) const;
 };
 

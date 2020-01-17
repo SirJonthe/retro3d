@@ -1,5 +1,10 @@
-#include <SDL/SDL_mixer.h>
-#include <SDL/SDL.h>
+#ifdef RETRO3D_USE_SDL1
+	#include <SDL/SDL_mixer.h>
+	#include <SDL/SDL.h>
+#elif defined(RETRO3D_USE_SDL2)
+	#include <SDL2/SDL_mixer.h>
+	#include <SDL2/SDL.h>
+#endif
 #include "sdl_sound_device.h"
 
 void platform::SDLSoundDevice::UpdateAABB(platform::SDLSoundDevice::PlaybackJob &j)
@@ -19,7 +24,7 @@ void platform::SDLSoundDevice::UpdateVolume(platform::SDLSoundDevice::PlaybackJo
 		{
 			const mmlVector<3> sfx_vec = retro3d::VectorFromAToB(mmlTranslation(j.world_transform->GetFinalMatrix()), mmlTranslation(m_world_transform->GetFinalMatrix()));
 			const float d = sfx_vec.Len();
-			vol = mmlIsApproxZero(d) == false ? mmlMin(1.0f, j.volume / d) : 1.0f;
+			vol = mmlIsApproxEqual(d, 0.0f) == false ? mmlMin(1.0f, j.volume / d) : 1.0f;
 			// set panning
 //			const mmlVector<3> right_normal = m_world_transform->GetRight();
 //			const mmlVector<3> left_normal = -right_normal;
@@ -76,6 +81,8 @@ bool platform::SDLSoundDevice::Init(const retro3d::Sound::Format &format)
 		m_format.sample_format = retro3d::Sound::SampleFormat_UINT8;
 		m_format.num_channels = retro3d::Sound::Channels_Mono;
 		Mix_CloseAudio();
+		Mix_Quit();
+		SDL_QuitSubSystem(SDL_INIT_AUDIO);
 	}
 
 	return result;

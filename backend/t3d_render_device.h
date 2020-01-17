@@ -60,7 +60,6 @@ private:
 private:
 	tiny3d::Image                  m_dst;
 	tiny3d::Array<float>           m_zbuf;
-	tiny3d::Array< mmlVector<3> >  m_vbuffer;
 	mmlMatrix<4,4>                 m_world_to_view;
 	mmlMatrix<4,4>                 m_view_to_world;
 	const mmlMatrix<4,4>          *m_world_to_view_ptr;

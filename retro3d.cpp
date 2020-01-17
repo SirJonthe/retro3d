@@ -5,6 +5,7 @@
 #include "backend/null_render_device.h"
 #include "backend/null_input_device.h"
 #include "backend/null_sound_device.h"
+#include "backend/null_video_device.h"
 #include "ecs/systems/retro_collision_system.h"
 #include "ecs/systems/retro_light_system.h"
 #include "ecs/systems/retro_render_system.h"
@@ -762,6 +763,7 @@ retro3d::Engine::Engine( void ) :
 	m_renderer(new platform::NullRenderDevice),
 	m_sound(new platform::NullSoundDevice),
 	m_input(new platform::NullInputDevice),
+	m_video(new platform::NullVideoDevice),
 	m_camera(&m_default_camera),
 	m_frame(0),
 	m_rand(),
@@ -827,6 +829,16 @@ retro3d::InputDevice *retro3d::Engine::GetInput( void )
 const retro3d::InputDevice *retro3d::Engine::GetInput( void ) const
 {
 	return m_input;
+}
+
+retro3d::VideoDevice *retro3d::Engine::GetVideo( void )
+{
+	return m_video;
+}
+
+const retro3d::VideoDevice *retro3d::Engine::GetVideo( void ) const
+{
+	return m_video;
 }
 
 double retro3d::Engine::Time( void ) const

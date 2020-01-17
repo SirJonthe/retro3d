@@ -4,12 +4,18 @@
 #include "MiniLib/MML/mmlVector.h"
 #include "MiniLib/MML/mmlMatrix.h"
 #include "../api/tiny3d/tiny_math.h"
+#include "../api/tiny3d/tiny_structs.h"
 #include "retro_transform.h"
 #include "retro_containers.h"
 #include "retro_assert.h"
 
 namespace retro3d
 {
+
+using Point = tiny3d::Point;
+using Rect = tiny3d::Rect;
+using UPoint = tiny3d::UPoint;
+using URect = tiny3d::URect;
 
 class Plane;
 
@@ -230,22 +236,15 @@ public:
 	Plane &operator=(const Plane &p) = default;
 
 	float    GetDistance(const mmlVector<3> &p) const;
-	int32_t  DetermineSide(float dist) const;
-	int32_t  DetermineSide(const retro3d::Vertex &v) const;
-	int32_t  DetermineSide(const mmlVector<3> &v) const;
-	uint32_t Clip(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4]) const;
-	uint32_t ReverseClip(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4]) const;
-	void     Clip(const retro3d::Array<retro3d::Vertex> &poly, retro3d::Array<retro3d::Vertex> *front, retro3d::Array<retro3d::Vertex> *back) const;
+	int32_t  DetermineSide(float dist, float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
+	int32_t  DetermineSide(const retro3d::Vertex &v, float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
+	int32_t  DetermineSide(const mmlVector<3> &v, float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
+	uint32_t Clip(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4], float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
 
 	template < typename type_t >
-	uint32_t Clip(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c, const type_t &a_attr, const type_t &b_attr, const type_t &c_attr, type_t (&out_attr)[4]) const;
+	uint32_t Clip(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c, const type_t &a_attr, const type_t &b_attr, const type_t &c_attr, type_t (&out_attr)[4], float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
 	template < typename type_t >
-	void     Clip(const retro3d::Array< mmlVector<3> > &poly, const retro3d::Array<type_t> &attr, retro3d::Array<type_t> *front_attr, retro3d::Array<type_t> *back_attr) const;
-	template < typename type_t >
-	uint32_t Mark(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c, const type_t &a_attr, const type_t &b_attr, const type_t &c_attr, type_t (&out_attr)[5]) const;
-	template < typename type_t >
-	void     Mark(const retro3d::Array< mmlVector<3> > &poly, const retro3d::Array<type_t> &attr, retro3d::Array<type_t> &out_attr) const;
-
+	void     Clip(const retro3d::Array< mmlVector<3> > &poly, const retro3d::Array<type_t> &attr, retro3d::Array<type_t> *front_attr, retro3d::Array<type_t> *back_attr, float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
 
 	mmlVector<3> GetClosestPoint(const mmlVector<3> &pt) const;
 
@@ -344,7 +343,7 @@ public:
 }
 
 template < typename type_t >
-uint32_t retro3d::Plane::Clip(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c, const type_t &a_attr, const type_t &b_attr, const type_t &c_attr, type_t (&out_attr)[4]) const
+uint32_t retro3d::Plane::Clip(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c, const type_t &a_attr, const type_t &b_attr, const type_t &c_attr, type_t (&out_attr)[4], float FP_EPSILON) const
 {
 	constexpr uint32_t TVERT = 3;
 	const mmlVector<3> (&t)[TVERT] = { a, b, c };
@@ -356,11 +355,11 @@ uint32_t retro3d::Plane::Clip(const mmlVector<3> &a, const mmlVector<3> &b, cons
 
 	for (uint32_t i = 0; i < TVERT; ++i) {
 		dist[i] = mmlDot(t[i] - m_position, m_normal);
-		side[i] = DetermineSide(dist[i]);
+		side[i] = DetermineSide(dist[i], FP_EPSILON);
 		if (side[i] < 0) { ++num_out; }
 	}
 
-	if (num_out == TVERT) { return num_in; }
+	if (num_out == TVERT) { return 0; }
 
 	for (uint32_t i = 0, j = TVERT-1; i < TVERT; j=i, ++i) {
 
@@ -377,63 +376,45 @@ uint32_t retro3d::Plane::Clip(const mmlVector<3> &a, const mmlVector<3> &b, cons
 }
 
 template < typename type_t >
-uint32_t retro3d::Plane::Mark(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c, const type_t &a_attr, const type_t &b_attr, const type_t &c_attr, type_t (&out_attr)[5]) const
-{
-	constexpr uint32_t TVERT = 3;
-	const mmlVector<3> (&t)[TVERT] = { a, b, c };
-	const type_t (&attr)[TVERT] = { a_attr, b_attr, c_attr };
-	float dist[TVERT];
-	int32_t side[TVERT];
-	uint32_t num_in = 0;
-	uint32_t num_out = 0;
-
-	for (uint32_t i = 0; i < TVERT; ++i) {
-		dist[i] = mmlDot(t[i] - m_position, m_normal);
-		side[i] = DetermineSide(dist[i]);
-		if (side[i] < 0) { ++num_out; }
-	}
-
-	if (num_out == TVERT) {
-		for (uint32_t i = 0; i < TVERT; ++i) {
-			out_attr[i] = attr[i];
-		}
-		return 3;
-	}
-
-	for (uint32_t i = 0, j = TVERT-1; i < TVERT; j=i, ++i) {
-
-		if ((side[i] < 0) == (side[j] >= 0)) {
-			const float x = dist[i] / (dist[i] - dist[j]);
-			out_attr[num_in++] = mmlLerp(attr[i], attr[j], x);
-		}
-		out_attr[num_in++] = attr[i];
-	}
-
-	return 5;
-}
-
-template < typename type_t >
-void retro3d::Plane::Clip(const retro3d::Array< mmlVector<3> > &poly, const retro3d::Array<type_t> &attr, retro3d::Array<type_t> *front_attr, retro3d::Array<type_t> *back_attr) const
+void retro3d::Plane::Clip(const retro3d::Array< mmlVector<3> > &poly, const retro3d::Array<type_t> &attr, retro3d::Array<type_t> *front_attr, retro3d::Array<type_t> *back_attr, float FP_EPSILON) const
 {
 	RETRO3D_ASSERT(poly.GetSize() == attr.GetSize());
 
 	mtlArray<float>                dist(poly.GetSize());
 	mtlArray<int32_t>              side(poly.GetSize());
-	retro3d::Array<type_t>         front, back;
 	retro3d::Array< mmlVector<3> > front_vert, back_vert;
 
 	front_vert.SetCapacity(poly.GetSize() + 1);
 	back_vert.SetCapacity(front_vert.GetSize());
 
-	front.SetCapacity(poly.GetSize() + 1);
-	back.SetCapacity(front.GetSize());
+	if (front_attr != nullptr) { front_attr->SetCapacity(front_vert.GetSize()); front_attr->Resize(0); }
+	if (back_attr  != nullptr) { back_attr->SetCapacity(front_vert.GetSize());  back_attr->Resize(0); }
 
-	if (front_attr != nullptr) { front_attr->Free(); }
-	if (back_attr != nullptr)  { back_attr->Free(); }
-
+	uint32_t in = 0, out = 0, on = 0;
 	for (int i = 0; i < poly.GetSize(); ++i) {
 		dist[i] = mmlDot(poly[i] - m_position, m_normal);
-		side[i] = DetermineSide(dist[i]);
+		side[i] = DetermineSide(dist[i], FP_EPSILON);
+		switch (side[i]) {
+		case -1: ++out; break;
+		case  0: ++on;  break;
+		case  1: ++in;  break;
+		}
+	}
+
+	// NOTE: Early exit if polygon is wholly on one side of the plane.
+	if (on == uint32_t(poly.GetSize()) && on > 2) { // NOTE: If all points are roughly on the same plane, use the polygon normal as determining factor where to put the attributes.
+		const mmlVector<3> n = mmlSurfaceNormal(poly[0], poly[1], poly[2]);
+		if (mmlDot(n, m_normal) >= 0.0f) { *front_attr = attr; }
+		else                             { *back_attr = attr; }
+		return;
+	}
+	if (out == 0) { // NOTE: If there are no points outside the plane, then they are either in front or on the plane. Store in front.
+		*front_attr = attr;
+		return;
+	}
+	if (in == 0) { // NOTE: If there are no points inside the plane, then they are either behind or on the plane. Store in back.
+		*back_attr = attr;
+		return;
 	}
 
 	for (int i = 0, j = poly.GetSize() - 1; i < poly.GetSize(); j=i, ++i) {
@@ -442,57 +423,30 @@ void retro3d::Plane::Clip(const retro3d::Array< mmlVector<3> > &poly, const retr
 			const float x = dist[i] / (dist[i] - dist[j]);
 
 			type_t a = mmlLerp(attr[i], attr[j], x);
-			front.Add(a);
-			back.Add(a);
+			if (front_attr != nullptr) { front_attr->Add(a); }
+			if (back_attr  != nullptr) { back_attr->Add(a); }
 
 			mmlVector<3> v = mmlLerp(poly[i], poly[j], x);
 			front_vert.Add(v);
 			back_vert.Add(v);
 		}
 		if (side[i] >= 0) {
-			front.Add(attr[i]);
+			if (front_attr != nullptr) { front_attr->Add(attr[i]); }
 			front_vert.Add(poly[i]);
 		}
 		if (side[i] < 0) {
-			back.Add(attr[i]);
+			if (back_attr != nullptr) { back_attr->Add(attr[i]); }
 			back_vert.Add(poly[i]);
 		}
 	}
 
+	// NOTE: If one of the sides only contain a very small polygon, then summarily say there is no clipping.
 	if (front_vert.GetSize() <= 2 || retro3d::IsVerySmallPolygon(front_vert) == true) {
 		if (front_attr != nullptr) { front_attr->Free(); }
 		if (back_attr  != nullptr) { *back_attr = attr; }
 	} else if (back_vert.GetSize() <= 2 || retro3d::IsVerySmallPolygon(back_vert) == true) {
 		if (front_attr != nullptr) { *front_attr = attr; }
 		if (back_attr  != nullptr) { back_attr->Free(); }
-	} else {
-		if (front_attr != nullptr) { *front_attr = front; }
-		if (back_attr  != nullptr) { *back_attr  = back; }
-	}
-}
-
-template < typename type_t >
-void retro3d::Plane::Mark(const retro3d::Array< mmlVector<3> > &poly, const retro3d::Array<type_t> &attr, retro3d::Array<type_t> &out_attr) const
-{
-	RETRO3D_ASSERT(poly.GetSize() == attr.GetSize());
-
-	mtlArray<float>   dist(poly.GetSize());
-	mtlArray<int32_t> side(poly.GetSize());
-
-	out_attr.SetCapacity(attr.GetSize() + 2);
-
-	for (int i = 0; i < poly.GetSize(); ++i) {
-		dist[i] = mmlDot(poly[i] - m_position, m_normal);
-		side[i] = DetermineSide(dist[i]);
-	}
-
-	for (int i = 0, j = poly.GetSize() - 1; i < poly.GetSize(); j=i, ++i) {
-		if ((side[i] < 0) == (side[j] >= 0)) {
-			const float x = dist[i] / (dist[i] - dist[j]);
-			type_t a = mmlLerp(attr[i], attr[j], x);
-			out_attr.Add(a);
-		}
-		out_attr.Add(attr[i]);
 	}
 }
 

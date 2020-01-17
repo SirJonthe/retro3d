@@ -1,8 +1,18 @@
 #include <chrono>
-#include <SDL/SDL.h>
 #include "sdl_input_device.h"
+#include "../retro3d.h"
 
+#ifdef RETRO3D_USE_SDL1
+	#include <SDL/SDL.h>
+#elif defined(RETRO3D_USE_SDL2)
+	#include <SDL2/SDL.h>
+#endif
+
+#ifdef RETRO3D_USE_SDL1
 uint64_t ToR3DKeycode(SDLKey sdlk)
+#elif defined(RETRO3D_USE_SDL2)
+uint64_t ToR3DKeycode(SDL_Keycode sdlk)
+#endif
 {
 	switch (sdlk) {
 	case SDLK_a: return retro3d::Keyboard::A;
@@ -42,7 +52,7 @@ uint64_t ToR3DKeycode(SDLKey sdlk)
 	case SDLK_7: return retro3d::Keyboard::KP7;
 	case SDLK_8: return retro3d::Keyboard::KP8;
 	case SDLK_9: return retro3d::Keyboard::KP9;
-
+#ifdef RETRO3D_USE_SDL1
 	case SDLK_KP0: return retro3d::Keyboard::NP0;
 	case SDLK_KP1: return retro3d::Keyboard::NP1;
 	case SDLK_KP2: return retro3d::Keyboard::NP2;
@@ -53,6 +63,18 @@ uint64_t ToR3DKeycode(SDLKey sdlk)
 	case SDLK_KP7: return retro3d::Keyboard::NP7;
 	case SDLK_KP8: return retro3d::Keyboard::NP8;
 	case SDLK_KP9: return retro3d::Keyboard::NP9;
+#elif defined(RETRO3D_USE_SDL2)
+	case SDLK_KP_0: return retro3d::Keyboard::NP0;
+	case SDLK_KP_1: return retro3d::Keyboard::NP1;
+	case SDLK_KP_2: return retro3d::Keyboard::NP2;
+	case SDLK_KP_3: return retro3d::Keyboard::NP3;
+	case SDLK_KP_4: return retro3d::Keyboard::NP4;
+	case SDLK_KP_5: return retro3d::Keyboard::NP5;
+	case SDLK_KP_6: return retro3d::Keyboard::NP6;
+	case SDLK_KP_7: return retro3d::Keyboard::NP7;
+	case SDLK_KP_8: return retro3d::Keyboard::NP8;
+	case SDLK_KP_9: return retro3d::Keyboard::NP9;
+#endif
 	case SDLK_KP_PLUS: return retro3d::Keyboard::NPPlus;
 	case SDLK_KP_MINUS: return retro3d::Keyboard::NPMinus;
 	case SDLK_KP_MULTIPLY: return retro3d::Keyboard::NPMul;
@@ -95,7 +117,11 @@ uint64_t ToR3DKeycode(SDLKey sdlk)
 	return retro3d::INPUT_COUNT;
 }
 
+#ifdef RETRO3D_USE_SDL1
 SDLKey ToSDLKeycode(uint64_t code)
+#elif defined(RETRO3D_USE_SDL2)
+SDL_Keycode ToSDLKeycode(uint64_t code)
+#endif
 {
 	switch (code) {
 	case retro3d::Keyboard::A: return SDLK_a;
@@ -136,6 +162,7 @@ SDLKey ToSDLKeycode(uint64_t code)
 	case retro3d::Keyboard::KP8: return SDLK_8;
 	case retro3d::Keyboard::KP9: return SDLK_9;
 
+#ifdef RETRO3D_USE_SDL1
 	case retro3d::Keyboard::NP0: return SDLK_KP0;
 	case retro3d::Keyboard::NP1: return SDLK_KP1;
 	case retro3d::Keyboard::NP2: return SDLK_KP2;
@@ -146,6 +173,18 @@ SDLKey ToSDLKeycode(uint64_t code)
 	case retro3d::Keyboard::NP7: return SDLK_KP7;
 	case retro3d::Keyboard::NP8: return SDLK_KP8;
 	case retro3d::Keyboard::NP9: return SDLK_KP9;
+#elif defined(RETRO3D_USE_SDL2)
+	case retro3d::Keyboard::NP0: return SDLK_KP_0;
+	case retro3d::Keyboard::NP1: return SDLK_KP_1;
+	case retro3d::Keyboard::NP2: return SDLK_KP_2;
+	case retro3d::Keyboard::NP3: return SDLK_KP_3;
+	case retro3d::Keyboard::NP4: return SDLK_KP_4;
+	case retro3d::Keyboard::NP5: return SDLK_KP_5;
+	case retro3d::Keyboard::NP6: return SDLK_KP_6;
+	case retro3d::Keyboard::NP7: return SDLK_KP_7;
+	case retro3d::Keyboard::NP8: return SDLK_KP_8;
+	case retro3d::Keyboard::NP9: return SDLK_KP_9;
+#endif
 	case retro3d::Keyboard::NPPlus: return SDLK_KP_PLUS;
 	case retro3d::Keyboard::NPMinus: return SDLK_KP_MINUS;
 	case retro3d::Keyboard::NPMul: return SDLK_KP_MULTIPLY;
@@ -185,7 +224,7 @@ SDLKey ToSDLKeycode(uint64_t code)
 
 	default: break;
 	}
-	return SDLK_LAST;
+	return SDLK_UNKNOWN;
 }
 
 void platform::SDLInputDevice::UpdateState(retro3d::InputDevice::Input &internal_state, float api_state, double delta_time)
@@ -261,7 +300,11 @@ void platform::SDLInputDevice::Update( void )
 	double delta_time = double(time_diff) / 1000.0;
 
 	SDL_PumpEvents();
+#ifdef RETRO3D_USE_SDL1
 	Uint8 *keys = SDL_GetKeyState(nullptr);
+#elif defined(RETRO3D_USE_SDL2)
+	const Uint8 *keys = SDL_GetKeyboardState(nullptr);
+#endif
 
 	for (uint64_t i = retro3d::Keyboard::FIRST; i < retro3d::Keyboard::LAST; ++i) {
 		UpdateState(m_state[i], float(keys[ToSDLKeycode(uint64_t(i))]), delta_time);
@@ -271,9 +314,16 @@ void platform::SDLInputDevice::Update( void )
 	Uint8 mouse_state = SDL_GetMouseState(&x, &y);
 
 	if (m_mouse_locked == true) {
+//		const Uint16 w2 = Uint16(GetEngine()->GetVideoDevice()->GetWindowWidth() / 2);
+//		const Uint16 h2 = Uint16(GetEngine()->GetVideoDevice()->GetWindowHeight() / 2);
+#ifdef RETRO3D_USE_SDL1
 		const Uint16 w2 = Uint16(SDL_GetVideoSurface()->w / 2);
 		const Uint16 h2 = Uint16(SDL_GetVideoSurface()->h / 2);
 		SDL_WarpMouse(w2, h2);
+#elif defined(RETRO3D_USE_SDL2)
+		retro3d::Point window_position = GetEngine()->GetVideoDevice()->GetWindowPosition();
+		SDL_WarpMouseGlobal(window_position.x + int32_t(w2), window_position.y + int32_t(h2));
+#endif
 		m_state[retro3d::Mouse::MoveX].activation -= float(w2 - x);
 		m_state[retro3d::Mouse::MoveY].activation -= float(h2 - y);
 	}

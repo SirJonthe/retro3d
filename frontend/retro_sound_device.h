@@ -2,6 +2,7 @@
 #define RETRO_SOUND_DEVICE_H
 
 #include <cstdint>
+#include "retro_device.h"
 #include "../audio/retro_voice.h"
 #include "../graphics/retro_camera.h"
 #include "../common/retro_transform.h"
@@ -9,7 +10,7 @@
 namespace retro3d
 {
 
-class SoundDevice
+class SoundDevice : public retro3d::Device
 {
 public:
 	virtual ~SoundDevice( void );

@@ -3,6 +3,7 @@
 
 #include "../api/tiny3d/tiny3d.h"
 
+#include "retro_device.h"
 #include "../common/MiniLib/MML/mmlVector.h"
 #include "../common/MiniLib/MML/mmlMatrix.h"
 #include "../graphics/retro_model.h"
@@ -18,7 +19,7 @@
 namespace retro3d
 {
 
-class RenderDevice
+class RenderDevice : public retro3d::Device
 {
 public:
 	enum RenderMode

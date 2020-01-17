@@ -227,7 +227,7 @@ void retro3d::Sound::SetSample(uint32_t sample_index, const retro3d::Sound::Samp
 				const float L = mmlAbs(sample.channel.left);
 				const float R = mmlAbs(sample.channel.right);
 				const float TOT = L + R;
-				if (mmlIsApproxZero(TOT) == false) {
+				if (mmlIsApproxEqual(TOT, 0.0f) == false) {
 					const float L_RATIO = L / TOT;
 					const float R_RATIO = R / TOT;
 					m_sample_ptr.u8[sample_index] = EncodeU8(sample.channel.left * L_RATIO + sample.channel.right * R_RATIO);
@@ -250,7 +250,7 @@ void retro3d::Sound::SetSample(uint32_t sample_index, const retro3d::Sound::Samp
 				const float L = mmlAbs(sample.channel.left);
 				const float R = mmlAbs(sample.channel.right);
 				const float TOT = L + R;
-				if (mmlIsApproxZero(TOT) == false) {
+				if (mmlIsApproxEqual(TOT, 0.0f) == false) {
 					const float L_RATIO = L / TOT;
 					const float R_RATIO = R / TOT;
 					m_sample_ptr.i16[sample_index] = EncodeI16(sample.channel.left * L_RATIO + sample.channel.right * R_RATIO);
@@ -350,7 +350,7 @@ void retro3d::Sound::MirrorChannels( void )
 		const float L = mmlAbs(s.channel.left);
 		const float R = mmlAbs(s.channel.right);
 		const float TOT = L + R;
-		if (mmlIsApproxZero(TOT) == false) {
+		if (mmlIsApproxEqual(TOT, 0.0f) == false) {
 			const float L_RATIO = L / TOT;
 			const float R_RATIO = R / TOT;
 			const float c = s.channel.left * L_RATIO + s.channel.right * R_RATIO;

@@ -759,9 +759,9 @@ retro3d::Plane::Plane(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVec
 	m_position(a), m_normal(mmlSurfaceNormal(a, b, c))
 {}
 
-int32_t retro3d::Plane::DetermineSide(float dist) const
+int32_t retro3d::Plane::DetermineSide(float dist, float FP_EPSILON) const
 {
-	return mmlIsApproxEqual(dist, 0.0f) ? 0 : (dist > 0.0f ? 1 : -1);
+	return mmlIsApproxEqual(dist, 0.0f, FP_EPSILON) ? 0 : (dist > 0.0f ? 1 : -1);
 }
 
 float retro3d::Plane::GetDistance(const mmlVector<3> &v) const
@@ -769,18 +769,18 @@ float retro3d::Plane::GetDistance(const mmlVector<3> &v) const
 	return mmlDot(v - m_position, m_normal);
 }
 
-int32_t retro3d::Plane::DetermineSide(const retro3d::Vertex &v) const
+int32_t retro3d::Plane::DetermineSide(const retro3d::Vertex &v, float FP_EPSILON) const
 {
-	return DetermineSide(v.v);
+	return DetermineSide(v.v, FP_EPSILON);
 }
 
-int32_t retro3d::Plane::DetermineSide(const mmlVector<3> &v) const
+int32_t retro3d::Plane::DetermineSide(const mmlVector<3> &v, float FP_EPSILON) const
 {
 	float dist = GetDistance(v);
-	return DetermineSide(dist);
+	return DetermineSide(dist, FP_EPSILON);
 }
 
-uint32_t retro3d::Plane::Clip(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4]) const
+uint32_t retro3d::Plane::Clip(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4], float FP_EPSILON) const
 {
 	constexpr uint32_t TVERT = 3;
 	const Vertex (&t)[TVERT] = { a, b, c };
@@ -791,7 +791,7 @@ uint32_t retro3d::Plane::Clip(const retro3d::Vertex &a, const retro3d::Vertex &b
 
 	for (uint32_t i = 0; i < TVERT; ++i) {
 		dist[i] = mmlDot(t[i].v - m_position, m_normal);
-		side[i] = DetermineSide(dist[i]);
+		side[i] = DetermineSide(dist[i], FP_EPSILON);
 		if (side[i] < 0) { ++num_out; }
 	}
 
@@ -813,63 +813,6 @@ uint32_t retro3d::Plane::Clip(const retro3d::Vertex &a, const retro3d::Vertex &b
 	}
 
 	return num_in;
-}
-
-uint32_t retro3d::Plane::ReverseClip(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4]) const
-{
-	Plane reversed;
-	reversed.m_position = m_position;
-	reversed.m_normal = -m_normal;
-	return reversed.Clip(a, b, c, out);
-}
-
-void retro3d::Plane::Clip(const retro3d::Array<retro3d::Vertex> &poly, retro3d::Array<retro3d::Vertex> *front, retro3d::Array<retro3d::Vertex> *back) const
-{
-	mtlArray<float>                 dist(poly.GetSize());
-	mtlArray<int32_t>               side(poly.GetSize());
-	retro3d::Array<retro3d::Vertex> front_vert, back_vert;
-
-	front_vert.SetCapacity(poly.GetSize() + 1);
-	back_vert.SetCapacity(front_vert.GetSize());
-
-	if (front != nullptr) { front->Free(); }
-	if (back != nullptr) { back->Free(); }
-
-	for (int i = 0; i < poly.GetSize(); ++i) {
-		dist[i] = mmlDot(poly[i].v - m_position, m_normal);
-		side[i] = DetermineSide(dist[i]);
-	}
-
-	for (int i = 0, j = poly.GetSize() - 1; i < poly.GetSize(); j=i, ++i) {
-
-		if ((side[i] < 0) == (side[j] >= 0)) {
-			const float x = dist[i] / (dist[i] - dist[j]);
-			retro3d::Vertex v = retro3d::Vertex{
-				mmlLerp(poly[i].v, poly[j].v, x),
-				mmlLerp(poly[i].t, poly[j].t, x),
-				mmlLerp(poly[i].c, poly[j].c, x)
-			};
-			front_vert.Add(v);
-			back_vert.Add(v);
-		}
-		if (side[i] >= 0) {
-			front_vert.Add(poly[i]);
-		}
-		if (side[i] < 0) {
-			back_vert.Add(poly[i]);
-		}
-	}
-
-	if (front_vert.GetSize() <= 2 || retro3d::IsVerySmallPolygon(front_vert) == true) {
-		if (front != nullptr) { front->Free(); }
-		if (back  != nullptr) { *back = poly; }
-	} else if (back_vert.GetSize() <= 2 || retro3d::IsVerySmallPolygon(back_vert) == true) {
-		if (front != nullptr) { *front = poly; }
-		if (back  != nullptr) { back->Free(); }
-	} else {
-		if (front != nullptr) { *front = front_vert; }
-		if (back  != nullptr) { *back  = back_vert; }
-	}
 }
 
 mmlVector<3> retro3d::Plane::GetClosestPoint(const mmlVector<3> &pt) const
