@@ -1,5 +1,4 @@
 #include <iostream>
-#include <SDL/SDL.h>
 #include "common/MiniLib/MGL/mglCollision.h"
 #include "retro3d.h"
 #include "backend/null_render_device.h"
