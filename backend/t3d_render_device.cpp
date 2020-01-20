@@ -1,6 +1,5 @@
 #include <sstream>
 #include <iomanip>
-#include <omp.h>
 #include "../common/MiniLib/MML/mmlMath.h"
 #include "../api/tiny3d/tiny_draw.h"
 #include "../retro3d.h"
@@ -918,33 +917,42 @@ retro3d::RenderDevice &platform::T3DRenderDevice::RenderText(double n, const mml
 	return RenderText(sout.str(), color);
 }
 
+void platform::T3DRenderDevice::ExecuteJobs(tiny3d::SInt thread_num, tiny3d::SInt dst_height_per_thread, tiny3d::SInt video_height_per_thread, bool update_video_out)
+{
+	tiny3d::URect thread_mask = { { tiny3d::UInt(0), tiny3d::UInt(thread_num * dst_height_per_thread)   }, { tiny3d::UInt(m_dst.GetWidth()),         tiny3d::UInt((thread_num + 1) * dst_height_per_thread)   } };
+	tiny3d::URect out_mask    = { { tiny3d::UInt(0), tiny3d::UInt(thread_num * video_height_per_thread) }, { tiny3d::UInt(GetEngine()->GetVideo()->GetWindowWidth()), tiny3d::UInt((thread_num + 1) * video_height_per_thread) } };
+	// TODO: Clearing buffers HERE
+	Render(thread_mask);
+	if (m_depth_render == true) {
+		DepthRender(thread_mask);
+	} else if (m_render_skybox == true) { // render sky only if enabled AND depth rendering not enabled
+		RenderSky(thread_mask);
+	}
+	Print(thread_mask);
+	if (update_video_out == true) {
+		GetEngine()->GetVideo()->FromImage(m_dst, out_mask);
+	}
+	ClearBuffers(thread_mask); // TODO, NOTE, BUG, HACK: Do NOT clear buffers here
+}
+
 void platform::T3DRenderDevice::FinishRender(bool update_video_out)
 {
 	// update the inverse world_to_view if world_to_view may have been changed outside the renderer
 	m_view_to_world = GetInverseViewTransform();
 
-	const tiny3d::SInt num_threads = omp_get_num_procs();
-	const tiny3d::SInt dst_height_per_thread = tiny3d::SInt(m_dst.GetHeight()) / num_threads;
+	const tiny3d::SInt num_threads             = tiny3d::SInt(std::thread::hardware_concurrency());
+	const tiny3d::SInt dst_height_per_thread   = tiny3d::SInt(m_dst.GetHeight()) / num_threads;
 	const tiny3d::SInt video_height_per_thread = tiny3d::SInt(GetEngine()->GetVideo()->GetWindowHeight()) / num_threads;
-#ifdef RETRO3D_RELEASE
-	#pragma omp parallel for
-#endif
+
+	m_render_threads.Create(num_threads);
+
 	for (tiny3d::SInt thread = 0; thread < num_threads; ++thread) {
-		tiny3d::URect thread_mask = { { tiny3d::UInt(0), tiny3d::UInt(thread * dst_height_per_thread)   }, { tiny3d::UInt(m_dst.GetWidth()),         tiny3d::UInt((thread + 1) * dst_height_per_thread)   } };
-		tiny3d::URect out_mask    = { { tiny3d::UInt(0), tiny3d::UInt(thread * video_height_per_thread) }, { tiny3d::UInt(GetEngine()->GetVideo()->GetWindowWidth()), tiny3d::UInt((thread + 1) * video_height_per_thread) } };
-		// TODO: Clearing buffers HERE
-		Render(thread_mask);
-		if (m_depth_render == true) {
-			DepthRender(thread_mask);
-		} else if (m_render_skybox == true) { // render sky only if enabled AND depth rendering not enabled
-			RenderSky(thread_mask);
-		}
-		Print(thread_mask);
-		if (update_video_out == true) {
-			GetEngine()->GetVideo()->FromImage(m_dst, out_mask);
-		}
-		ClearBuffers(thread_mask); // TODO, NOTE, BUG, HACK: Do NOT clear buffers here
+		m_render_threads[thread] = std::thread(&platform::T3DRenderDevice::ExecuteJobs, this, thread, dst_height_per_thread, video_height_per_thread, update_video_out);
 	}
+	for (tiny3d::SInt thread = 0; thread < m_render_threads.GetSize(); ++thread) {
+		m_render_threads[thread].join();
+	}
+
 	ClearJobBuffers();
 	++m_frames_rendered;
 }

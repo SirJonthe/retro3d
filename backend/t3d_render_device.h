@@ -1,6 +1,7 @@
 #ifndef RETRO_T3D_RENDER_H
 #define RETRO_T3D_RENDER_H
 
+#include <thread>
 #include "../frontend/retro_render_device.h"
 #include "../api/tiny3d/tiny_image.h"
 
@@ -43,7 +44,6 @@ private:
 		tiny3d::Point xy;
 		Type          type;
 		bool          to_console;
-
 	};
 
 	enum BoxSides
@@ -55,6 +55,16 @@ private:
 		Side_Back,
 		Side_Front,
 		Side_Count
+	};
+
+	struct Jobs
+	{
+		tiny3d::Array<Render2DJob>     m_print_queue;
+		tiny3d::UInt                   m_num_print_items;
+		tiny3d::Array<Render3DJob>     m_render_queue;
+		tiny3d::UInt                   m_num_render_items;
+		tiny3d::Array<retro3d::Light>  m_lights;
+		tiny3d::UInt                   m_num_lights;
 	};
 
 private:
@@ -74,6 +84,7 @@ private:
 	tiny3d::UInt                   m_num_render_items;
 	tiny3d::Array<retro3d::Light>  m_lights;
 	tiny3d::UInt                   m_num_lights;
+	retro3d::Array<std::thread>    m_render_threads;
 	tiny3d::UInt                   m_frames_rendered;
 	retro3d::Model                 m_skybox;
 	float                          m_mip_ratio;
@@ -81,23 +92,24 @@ private:
 	bool                           m_render_skybox;
 
 private:
-	Render3DJob *Add3DJob(Render3DJob::Type type, const mmlMatrix<4,4> &obj_to_world, LightMode light_mode);
-	Render3DJob *Add3DJob(Render3DJob::Type type, const mmlMatrix<4,4> *obj_to_world, LightMode light_mode);
-	Render2DJob *Add2DJob(Render2DJob::Type type, tiny3d::Point xy, tiny3d::Color color);
-	mmlVector<3> Project(const mmlVector<3> &v) const;
-	bool         IsFront(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c) const;
-	tiny3d::UInt ClipNear(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4], bool &clipped) const;
-	void         ClearBuffers(tiny3d::URect rect);
-	tiny3d::UInt DetermineMipLevel(const retro3d::Texture &mips, const retro3d::Vertex &ss_vert_a, const retro3d::Vertex &ss_vert_b, const retro3d::Vertex &ss_vert_c) const;
-	void         Render(tiny3d::URect rect);
-	void         RenderSky(tiny3d::URect rect);
-	void         RenderModel(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
-	void         RenderDisplay(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
-	void         RenderAABB(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
-	void         RenderFrustum(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
-	void         DepthRender(tiny3d::URect rect);
-	void         Print(tiny3d::URect rect);
-	void         ClearJobBuffers( void );
+	Render3DJob  *Add3DJob(Render3DJob::Type type, const mmlMatrix<4,4> &obj_to_world, LightMode light_mode);
+	Render3DJob  *Add3DJob(Render3DJob::Type type, const mmlMatrix<4,4> *obj_to_world, LightMode light_mode);
+	Render2DJob  *Add2DJob(Render2DJob::Type type, tiny3d::Point xy, tiny3d::Color color);
+	mmlVector<3>  Project(const mmlVector<3> &v) const;
+	bool          IsFront(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c) const;
+	tiny3d::UInt  ClipNear(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4], bool &clipped) const;
+	void          ClearBuffers(tiny3d::URect rect);
+	tiny3d::UInt  DetermineMipLevel(const retro3d::Texture &mips, const retro3d::Vertex &ss_vert_a, const retro3d::Vertex &ss_vert_b, const retro3d::Vertex &ss_vert_c) const;
+	void          Render(tiny3d::URect rect);
+	void          RenderSky(tiny3d::URect rect);
+	void          RenderModel(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
+	void          RenderDisplay(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
+	void          RenderAABB(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
+	void          RenderFrustum(const tiny3d::URect &rect, const Render3DJob &job, tiny3d::Array< retro3d::Light > &lights);
+	void          DepthRender(tiny3d::URect rect);
+	void          Print(tiny3d::URect rect);
+	void          ExecuteJobs(tiny3d::SInt thread_num, tiny3d::SInt dst_height_per_thread, tiny3d::SInt video_height_per_thread, bool update_video_out);
+	void          ClearJobBuffers( void );
 
 public:
 	T3DRenderDevice( void );

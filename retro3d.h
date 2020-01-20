@@ -7,7 +7,6 @@
 #include "common/MiniLib/MML/mmlRandom.h"
 #include "common/retro_timer.h"
 #include "frontend/retro_render_device.h"
-#include "retro_object.h"
 #include "ecs/retro_component.h"
 #include "ecs/retro_system.h"
 #include "graphics/retro_camera.h"
@@ -29,29 +28,27 @@ private:
 	// [component_class_id] = access all components of certain type
 
 private:
-	retro3d::RenderDevice                 *m_renderer;
-	retro3d::SoundDevice                  *m_sound;
-	retro3d::InputDevice                  *m_input;
-	retro3d::VideoDevice                  *m_video;
-	const retro3d::Camera                 *m_camera;
-	retro3d::Camera                        m_default_camera;
-	mtlList< mtlShared<retro3d::Object> >  m_objects;
-	mtlList< mtlShared<retro3d::Object> >  m_new_objects;
-	Components                             m_components_pending_init;
-	Components                             m_components;
-	mtlList< retro3d::Entity* >            m_entities;
-	Systems                                m_systems;
-	Systems                                m_systems_pending_init;
-	retro3d::Timer                         m_timer;
-	uint64_t                               m_frame;
-	mmlRandom                              m_rand;
-	double                                 m_time; // should not be floating point...
-	double                                 m_delta_time;
-	double                                 m_min_delta_time;
-	double                                 m_max_delta_time;
-	double                                 m_time_scale;
-	bool                                   m_is_running;
-	bool                                   m_quit;
+	retro3d::RenderDevice       *m_renderer;
+	retro3d::SoundDevice        *m_sound;
+	retro3d::InputDevice        *m_input;
+	retro3d::VideoDevice        *m_video;
+	const retro3d::Camera       *m_camera;
+	retro3d::Camera              m_default_camera;
+	Components                   m_components_pending_init;
+	Components                   m_components;
+	mtlList< retro3d::Entity* >  m_entities;
+	Systems                      m_systems;
+	Systems                      m_systems_pending_init;
+	retro3d::Timer               m_timer;
+	uint64_t                     m_frame;
+	mmlRandom                    m_rand;
+	double                       m_time; // should not be floating point...
+	double                       m_delta_time;
+	double                       m_min_delta_time;
+	double                       m_max_delta_time;
+	double                       m_time_scale;
+	bool                         m_is_running;
+	bool                         m_quit;
 
 private:
 	static void CreateBaseModels( void );

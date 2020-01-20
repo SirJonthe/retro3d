@@ -1,9 +1,17 @@
 #ifdef RETRO3D_USE_SDL1
-	#include <SDL/SDL_mixer.h>
+	#ifndef RETRO3D_MACOS
+		#include <SDL/SDL_mixer.h>
+	#else
+		#include <SDL_mixer/SDL_mixer.h>
+	#endif
 	#include <SDL/SDL.h>
 	#define SDL_STR "SDL1"
 #elif defined(RETRO3D_USE_SDL2)
-	#include <SDL2/SDL_mixer.h>
+	#ifndef RETRO3D_MACOS
+		#include <SDL2/SDL_mixer.h>
+	#else
+		#include <SDL2_mixer/SDL_mixer.h>
+	#endif
 	#include <SDL2/SDL.h>
 	#define SDL_STR "SDL2"
 #endif
