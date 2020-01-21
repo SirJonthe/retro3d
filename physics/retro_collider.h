@@ -104,8 +104,17 @@ public:
 	mmlVector<3> FindExtremePoint(const mmlVector<3> &world_search_direction) const override;
 };
 
-//class SphereCollider : public Collider
-//{};
+// class SphereCollider : public Collider
+// {};
+
+// class PlaneCollider : public Collider
+// {};
+
+// class PointCollider : public Collider
+// {};
+
+// class OBBCollider : public Collider
+// {};
 
 class PolyCollider : public Collider
 {

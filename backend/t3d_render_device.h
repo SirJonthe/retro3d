@@ -22,7 +22,7 @@ private:
 		RenderMode                   render_mode;
 		std::string                  text;
 		retro3d::AABB                obj_aabb;
-		retro3d::ViewFrustum         obj_frustum;
+		retro3d::Frustum             obj_view_frustum;
 		tiny3d::Color                color;
 		Type                         type;
 		mmlMatrix<4,4>               obj_to_world;
@@ -95,7 +95,8 @@ private:
 	Render3DJob  *Add3DJob(Render3DJob::Type type, const mmlMatrix<4,4> &obj_to_world, LightMode light_mode);
 	Render3DJob  *Add3DJob(Render3DJob::Type type, const mmlMatrix<4,4> *obj_to_world, LightMode light_mode);
 	Render2DJob  *Add2DJob(Render2DJob::Type type, tiny3d::Point xy, tiny3d::Color color);
-	mmlVector<3>  Project(const mmlVector<3> &v) const;
+	mmlVector<3>  ProjectWorldSpaceToScreenSpace(const mmlVector<3> &v) const;
+	mmlVector<3>  ProjectScreenSpaceToWorldSpace(const mmlVector<3> &v) const;
 	bool          IsFront(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c) const;
 	tiny3d::UInt  ClipNear(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4], bool &clipped) const;
 	void          ClearBuffers(tiny3d::URect rect);
@@ -133,8 +134,8 @@ public:
 	void RenderLight(const retro3d::Light &light) override;
 	void RenderAABB(const retro3d::AABB &aabb, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.0, 1.0, 0.0), bool world_axis_aligned = true) override;
 	void RenderAABB(const retro3d::AABB &aabb, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.0, 1.0, 0.0), bool world_axis_aligned = true) override;
-	void RenderViewFrustum(const retro3d::ViewFrustum &frustum, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.5, 0.5, 0.5)) override;
-	void RenderViewFrustum(const retro3d::ViewFrustum &frustum, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.5, 0.5, 0.5)) override;
+	void RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.5, 0.5, 0.5)) override;
+	void RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.5, 0.5, 0.5)) override;
 	RenderDevice &RenderText(const std::string &str, const mmlVector<3> &color) override;
 	RenderDevice &RenderText(int64_t n, const mmlVector<3> &color) override;
 	RenderDevice &RenderText(uint64_t n, const mmlVector<3> &color) override;
@@ -150,7 +151,7 @@ public:
 	bool SkyboxEnabled( void ) const override;
 	float GetHorizontalFieldOfView( void ) const override;
 	float GetVerticalFieldOfView( void ) const override;
-	retro3d::ViewFrustum GetViewFrustum( void ) const override;
+	retro3d::Frustum GetViewFrustum( void ) const override;
 
 	void Debug_RenderTriangle(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, const mmlMatrix<4,4> &obj_to_world, const mmlMatrix<4,4> &world_to_view, const retro3d::Texture *texture, LightMode light_mode) override;
 };

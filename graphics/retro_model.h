@@ -218,9 +218,9 @@ public:
 class ModelSet
 {
 private:
-	retro3d::Array< retro3d::Model >         m_set;
-	retro3d::Array< retro3d::PortalFrustum > m_portals;
-	retro3d::AABB                            m_aabb;
+	retro3d::Array< retro3d::Model >   m_set;
+	retro3d::Array< retro3d::Frustum > m_portals;
+	retro3d::AABB                      m_aabb;
 
 public:
 	void CreatePortals(const std::string &portal_o_name);
@@ -493,8 +493,8 @@ public:
 
 	void          BuildViewOrder(const mmlVector<3> &view_normal, GeometryQueue &out) const;
 	GeometryQueue BuildViewOrder(const mmlVector<3> &view_normal) const;
-	void          BuildViewOrder(const retro3d::ViewFrustum &view_frustum, GeometryQueue &out) const;
-	GeometryQueue BuildViewOrder(const retro3d::ViewFrustum &view_frustum) const;
+	void          BuildViewOrder(const retro3d::Frustum &view_frustum, GeometryQueue &out) const;
+	GeometryQueue BuildViewOrder(const retro3d::Frustum &view_frustum) const;
 
 	const Material &GetMaterial(uint32_t index) const;
 

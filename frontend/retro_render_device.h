@@ -58,8 +58,8 @@ public:
 	virtual void RenderLight(const retro3d::Light &light) = 0;
 	virtual void RenderAABB(const retro3d::AABB &aabb, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.0, 1.0, 0.0), bool world_axis_aligned = true) = 0;
 	virtual void RenderAABB(const retro3d::AABB &aabb, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.0, 1.0, 0.0), bool world_axis_aligned = true) = 0;
-	virtual void RenderViewFrustum(const retro3d::ViewFrustum &frustum, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color = mmlVector<3>::Fill(0.5f)) = 0;
-	virtual void RenderViewFrustum(const retro3d::ViewFrustum &frustum, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>::Fill(0.5f)) = 0;
+	virtual void RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color = mmlVector<3>::Fill(0.5f)) = 0;
+	virtual void RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>::Fill(0.5f)) = 0;
 	virtual RenderDevice &RenderText(const std::string &str, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;
 	virtual RenderDevice &RenderText(int64_t n, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;
 	virtual RenderDevice &RenderText(uint64_t n, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;
@@ -75,7 +75,7 @@ public:
 	virtual bool SkyboxEnabled( void ) const = 0;
 	virtual float GetHorizontalFieldOfView( void ) const = 0;
 	virtual float GetVerticalFieldOfView( void ) const = 0;
-	virtual retro3d::ViewFrustum GetViewFrustum( void ) const = 0;
+	virtual retro3d::Frustum GetViewFrustum( void ) const = 0;
 //	virtual void ToDataInterchangeFormat(retro3d::RenderDevice &data) const;
 
 	virtual void Debug_RenderTriangle(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, const mmlMatrix<4,4> &obj_to_world, const mmlMatrix<4,4> &world_to_view, const retro3d::Texture *texture, LightMode light_mode) = 0;

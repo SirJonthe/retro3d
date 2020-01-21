@@ -258,7 +258,7 @@ public:
 	Plane ApplyTransform(const retro3d::Transform &transform) const;
 };
 
-class ViewFrustum
+/*class ViewFrustum
 {
 public:
 	enum Planes
@@ -293,14 +293,14 @@ public:
 	void           GetCorners(mmlVector<3> *out) const;
 	void           GetCorners(retro3d::Array< mmlVector<3> > &out) const;
 
-	ViewFrustum    Split(float h_ratio, float v_ratio, float z_ratio, int h_index, int v_index, int z_index) const;
-	ViewFrustum    Split(float h_ratio, float v_ratio, int h_index, int v_index) const;
-};
+	ViewFrustum    Split(float h_ratio, float v_ratio, float z_ratio, int32_t h_index, int32_t v_index, int32_t z_index) const;
+	ViewFrustum    Split(float h_ratio, float v_ratio, int32_t h_index, int32_t v_index) const;
+};*/
 
-class PortalFrustum
+class Frustum
 {
 private:
-	enum
+	enum Planes
 	{
 		Plane_Near,
 		Plane_Far,
@@ -314,12 +314,14 @@ private:
 	float                            m_zfar;
 
 public:
-	PortalFrustum( void );
-	PortalFrustum(const PortalFrustum&) = default;
-	PortalFrustum &operator=(const PortalFrustum&) = default;
+	Frustum( void );
+	Frustum(const mmlVector<3> &view_point, const retro3d::Array< mmlVector<3> > &port_verts, float zfar);
+	Frustum(const mmlVector<3> &view_point, const mmlVector<3> *port_verts, int32_t port_vert_count, float zfar);
+	Frustum(const Frustum&) = default;
+	Frustum &operator=(const Frustum&) = default;
 
 	void SetFrustum(const mmlVector<3> &view_point, const retro3d::Array< mmlVector<3> > &port_verts, float zfar);
-	void SetFrustum(const mmlVector<3> &view_point, const mmlVector<3> *port_verts, int port_vert_count, float zfar);
+	void SetFrustum(const mmlVector<3> &view_point, const mmlVector<3> *port_verts, int32_t port_vert_count, float zfar);
 	void SetOrigin(const mmlVector<3> &view_point);
 
 	retro3d::Contain Contains(const mmlVector<3> &pt) const;
@@ -333,9 +335,9 @@ public:
 	uint32_t GetPortalVertexCount( void ) const;
 	uint32_t GetFrustumVertexCount( void ) const;
 
-	PortalFrustum ApplyTransform(const retro3d::Transform &transform) const;
-	void          GetCorners(mmlVector<3> *out) const;
-	void          GetCorners(retro3d::Array< mmlVector<3> > &out) const;
+	Frustum ApplyTransform(const retro3d::Transform &transform) const;
+	void    GetCorners(mmlVector<3> *out) const;
+	void    GetCorners(retro3d::Array< mmlVector<3> > &out) const;
 
 	retro3d::Plane GetPortalPlane( void ) const;
 };

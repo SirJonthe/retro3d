@@ -16,11 +16,15 @@ namespace retro3d
 retro_system(RenderSystem, retro3d::RenderComponent)
 {
 private:
-	retro3d::ViewFrustum m_frustum;
+	retro3d::ColliderTree<retro3d::RenderComponent> m_view_hierarchy;
+	retro3d::ColliderTree<retro3d::Light>           m_light_hierarchy;
+	retro3d::Frustum                                m_view_frustum;
 	// Shared pointer to SCENE data structure
 
 protected:
+	void OnSpawn(retro3d::RenderComponent &c) override;
 	void OnUpdate(retro3d::RenderComponent &c) override;
+	void OnDestroy(retro3d::RenderComponent &c) override;
 	void OnUpdate( void ) override;
 
 public:

@@ -132,6 +132,7 @@ public:
 
 	leafdata_t *CastRay(const retro3d::Ray &world_ray, uint64_t filter_flags, retro3d::Ray::Contact *contact_info = nullptr) const;
 	bool Contains(const mmlVector<3> &world_point, uint64_t filter_flags, mtlList<leafdata_t*> *contacts = nullptr) const;
+	bool Contains(const retro3d::Frustum &world_frustum, uint64_t filter_flags, mtlList<leafdata_t*> *contacts = nullptr) const;
 
 	uint32_t GetColliderCount( void ) const;
 
@@ -547,6 +548,7 @@ void retro3d::ColliderTree<leafdata_t>::Reinsert( void )
 template < typename leafdata_t >
 bool retro3d::ColliderTree<leafdata_t>::Remove(const leafdata_t *leaf_data)
 {
+	if (m_root == nullptr) { return false; }
 	Node *N = m_root->FindLeaf(leaf_data);
 	Remove(N);
 	return N != nullptr;
@@ -555,6 +557,7 @@ bool retro3d::ColliderTree<leafdata_t>::Remove(const leafdata_t *leaf_data)
 template < typename leafdata_t >
 bool retro3d::ColliderTree<leafdata_t>::Remove(const retro3d::Collider *collider)
 {
+	if (m_root == nullptr) { return false; }
 	Node *N = m_root->FindLeaf(collider);
 	Remove(N);
 	return N != nullptr;
@@ -573,7 +576,7 @@ void retro3d::ColliderTree<leafdata_t>::Update( void )
 		Node *N = s.top();
 		s.pop();
 
-		if (N == nullptr /*|| N->is_static == true*/) { continue; }
+		if (N == nullptr || N->is_static == true) { continue; }
 
 		if (N->IsLeaf() == true) {
 			if (N->world_aabb.Contains(N->GetColliderWorldAABB()) <= retro3d::Contain_Partial) { // remove and re-insert if collider AABB has fully or partially slipped out of the bounds of the parent AABB
@@ -773,8 +776,42 @@ bool retro3d::ColliderTree<leafdata_t>::Contains(const mmlVector<3> &world_point
 		if (top->IsLeaf() == true) {
 			if (out != nullptr) {
 				out->AddLast(top->container.user_data);
+				hit_detected = true;
+			} else {
+				return true;
 			}
-			hit_detected = true;
+		} else {
+			stack.push(top->child0);
+			stack.push(top->child1);
+		}
+	}
+
+	return hit_detected;
+}
+
+template < typename leafdata_t >
+bool retro3d::ColliderTree<leafdata_t>::Contains(const retro3d::Frustum &world_frustum, uint64_t filter_flags, mtlList<leafdata_t*> *out) const
+{
+	bool hit_detected = false;
+	std::stack<const Node*> stack;
+	stack.push(m_root);
+
+	while (stack.empty() == false) {
+
+		const Node *top = stack.top();
+		stack.pop();
+
+		if (top == nullptr || (top->filter_flags & filter_flags) == 0 || (world_frustum.Contains(top->world_aabb) == retro3d::Contain_False && top->world_aabb.Contains(world_frustum.GetOrigin()) == retro3d::Contain_False)) {
+			continue;
+		}
+
+		if (top->IsLeaf() == true) {
+			if (out != nullptr) {
+				out->AddLast(top->container.user_data);
+				hit_detected = true;
+			} else {
+				return true;
+			}
 		} else {
 			stack.push(top->child0);
 			stack.push(top->child1);

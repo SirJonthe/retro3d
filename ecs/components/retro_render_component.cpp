@@ -1,10 +1,12 @@
 #include "retro_render_component.h"
 #include "retro_transform_component.h"
 #include "../retro_entity.h"
+#include "../../common/MiniLib/MML/mmlMath.h"
 
 void retro3d::RenderComponent::OnSpawn( void )
 {
 	m_transform = GetObject()->AddComponent<retro3d::TransformComponent>()->GetTransform();
+	m_occlusion_collider.AttachTransform(m_transform);
 	if (m_current_animation == nullptr) {
 		SetAnimation("idle");
 	}
@@ -25,12 +27,15 @@ void retro3d::RenderComponent::OnUpdate( void )
 
 retro3d::RenderComponent::RenderComponent( void ) :
 	mtlInherit(this),
+	m_transform(),
 	m_animations(), m_first_animation(nullptr), m_current_animation(nullptr),
 	m_frame_index(0), m_current_frame_countdown(0.0f),
+	m_biggest_aabb(),
+	m_occlusion_collider(),
 	m_light_mode(retro3d::RenderDevice::LightMode_Dynamic),
 	m_animation_speed_scale(1.0f)
 {
-	CreateAnimation("idle");
+	CreateAnimation("idle", 1);
 }
 
 mtlShared<retro3d::Model> retro3d::RenderComponent::GetModel( void )
@@ -43,10 +48,14 @@ const mtlShared<retro3d::Model> retro3d::RenderComponent::GetModel( void ) const
 	return m_current_animation != nullptr ? m_current_animation->frames[m_frame_index].model : mtlShared<retro3d::Model>();
 }
 
-void retro3d::RenderComponent::SetModel(mtlShared< retro3d::Model > model)
+void retro3d::RenderComponent::SetFrame(const mtlShared< retro3d::Model > &model, float display_time)
 {
 	if (m_current_animation != nullptr) {
 		m_current_animation->frames[m_frame_index].model = model;
+		m_current_animation->frames[m_frame_index].display_time = display_time;
+		m_current_animation->biggest_aabb = m_current_animation->biggest_aabb | model->aabb;
+		m_biggest_aabb = m_biggest_aabb | m_current_animation->biggest_aabb;
+		m_occlusion_collider.SetLocalAABB(m_biggest_aabb);
 	}
 }
 
@@ -60,21 +69,43 @@ retro3d::AABB retro3d::RenderComponent::GetBiggestAABB( void ) const
 	return m_biggest_aabb;
 }
 
-void retro3d::RenderComponent::CreateAnimation(const mtlChars &animation_name)
+const retro3d::AABBCollider &retro3d::RenderComponent::GetOcclusionCollider( void ) const
+{
+	return m_occlusion_collider;
+}
+
+void retro3d::RenderComponent::CreateAnimation(const mtlChars &animation_name, uint32_t frame_count)
 {
 	Animation *a = m_animations.CreateEntry(animation_name);
-	a->name = std::string(animation_name.GetChars(), size_t(animation_name.GetSize()));
-	if (a->frames.GetSize() == 0) {
-		a->frames.Create(1);
-		a->frames[0].model.New();
-		*a->frames[0].model.GetShared() = *retro3d::Engine::DefaultModel().GetShared();
-		a->frames[0].display_time = 0.0f;
+
+	mtlShared<retro3d::Model> default_copy;
+	default_copy.New();
+	*default_copy.GetShared() = *retro3d::Engine::DefaultModel().GetShared();
+
+	a->frames.Create(mmlMax(1, int(frame_count)));
+	for (int i = 0; i < a->frames.GetSize(); ++i) {
+		a->frames[i].model = default_copy;
 	}
+
 	if (m_current_animation == nullptr) {
 		m_current_animation = a;
 	}
 	if (m_first_animation == nullptr) {
 		m_first_animation = a;
+	}
+}
+
+void retro3d::RenderComponent::CreateAnimation(uint32_t frame_count)
+{
+	if (m_current_animation != nullptr) {
+		mtlShared<retro3d::Model> default_copy;
+		default_copy.New();
+		*default_copy.GetShared() = *retro3d::Engine::DefaultModel().GetShared();
+
+		m_current_animation->frames.Create(mmlMax(1, int(frame_count)));
+		for (int i = 0; i < m_current_animation->frames.GetSize(); ++i) {
+			m_current_animation->frames[i].model = default_copy;
+		}
 	}
 }
 
@@ -102,16 +133,6 @@ void retro3d::RenderComponent::SetAnimation(const mtlChars &animation_name)
 	m_current_frame_countdown = m_current_animation->frames[m_frame_index].display_time;
 }
 
-const retro3d::RenderComponent::Animation *retro3d::RenderComponent::GetAnimation( void ) const
-{
-	return m_current_animation;
-}
-
-retro3d::RenderComponent::Animation *retro3d::RenderComponent::GetAnimation( void )
-{
-	return m_current_animation;
-}
-
 uint32_t retro3d::RenderComponent::GetFrameIndex( void ) const
 {
 	return m_frame_index;
@@ -122,6 +143,11 @@ void retro3d::RenderComponent::SetFrameIndex(uint32_t i)
 	if (m_current_animation != nullptr) {
 		m_frame_index = (i % uint32_t(m_current_animation->frames.GetSize()));
 	}
+}
+
+uint32_t retro3d::RenderComponent::GetAnimationFrameCount( void ) const
+{
+	return m_current_animation != nullptr ? uint32_t(m_current_animation->frames.GetSize()) : 0;
 }
 
 mmlMatrix<4,4> retro3d::RenderComponent::GetTransformMatrix( void ) const

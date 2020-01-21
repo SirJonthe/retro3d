@@ -5,6 +5,7 @@
 #include "../../graphics/retro_model.h"
 #include "retro_transform_component.h"
 #include "../../frontend/retro_render_device.h"
+#include "../../physics/retro_collider.h"
 
 namespace retro3d
 {
@@ -13,19 +14,17 @@ namespace retro3d
 
 retro_component(RenderComponent)
 {
-public:
+private:
 	struct Frame
 	{
-		mtlShared<retro3d::Model>         model;
-		retro3d::Array<retro3d::Material> override_materials; // TODO: use these materials instead of the ones supplied with the model
-		float                             display_time = 0.0f;
+		mtlShared<retro3d::Model> model;
+		float                     display_time = 0.0f;
 	};
 
 	struct Animation
 	{
-		mtlArray<Frame> frames;
-		std::string     name;
-		retro3d::AABB   biggest_aabb;
+		retro3d::Array<Frame> frames;
+		retro3d::AABB         biggest_aabb;
 	};
 
 	typedef mtlStringMap< Animation > Animations;
@@ -38,6 +37,7 @@ private:
 	uint32_t                          m_frame_index;
 	float                             m_current_frame_countdown;
 	retro3d::AABB                     m_biggest_aabb;
+	retro3d::AABBCollider             m_occlusion_collider;
 	retro3d::RenderDevice::LightMode  m_light_mode;
 	float                             m_animation_speed_scale;
 
@@ -50,18 +50,20 @@ public:
 
 	mtlShared<retro3d::Model>       GetModel( void );
 	const mtlShared<retro3d::Model> GetModel( void ) const;
-	void SetModel(mtlShared<retro3d::Model> model);
+	void SetFrame(const mtlShared<retro3d::Model> &model, float display_time = 0.0f);
 
 	retro3d::AABB GetBiggestAnimationAABB( void ) const;
 	retro3d::AABB GetBiggestAABB( void ) const;
 
-	void             CreateAnimation(const mtlChars &animation_name);
-	void             SetAnimation(const mtlChars &animation_name);
-	const Animation *GetAnimation( void ) const;
-	Animation       *GetAnimation( void );
+	const retro3d::AABBCollider &GetOcclusionCollider( void ) const;
+
+	void CreateAnimation(const mtlChars &animation_name, uint32_t frame_count = 1);
+	void CreateAnimation(uint32_t frame_count);
+	void SetAnimation(const mtlChars &animation_name);
 
 	uint32_t GetFrameIndex( void ) const;
 	void     SetFrameIndex(uint32_t i);
+	uint32_t GetAnimationFrameCount( void ) const;
 
 	mmlMatrix<4,4> GetTransformMatrix( void ) const;
 

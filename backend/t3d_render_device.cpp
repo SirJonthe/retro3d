@@ -41,16 +41,30 @@ platform::T3DRenderDevice::Render2DJob *platform::T3DRenderDevice::Add2DJob(plat
 	return nullptr;
 }
 
-mmlVector<3> platform::T3DRenderDevice::Project(const mmlVector<3> &v) const
+mmlVector<3> platform::T3DRenderDevice::ProjectWorldSpaceToScreenSpace(const mmlVector<3> &v) const
 {
-	float fwidth = float(m_dst.GetWidth());
-	float fheight = float(m_dst.GetHeight());
-	float screen_offset_x = fwidth / 2.0f;
-	float screen_offset_y = fheight / 2.0f;
-	float screen_scale = mmlMin(fwidth, fheight);
+	const float fwidth = float(m_dst.GetWidth());
+	const float fheight = float(m_dst.GetHeight());
+	const float screen_offset_x = fwidth / 2.0f;
+	const float screen_offset_y = fheight / 2.0f;
+	const float screen_scale = mmlMin(fwidth, fheight);
 	mmlVector<3> p;
 	p[0] = (v[0] / v[2]) * screen_scale + screen_offset_x;
 	p[1] = -(v[1] / v[2]) * screen_scale + screen_offset_y;
+	p[2] = v[2];
+	return p;
+}
+
+mmlVector<3> platform::T3DRenderDevice::ProjectScreenSpaceToWorldSpace(const mmlVector<3> &v) const
+{
+	const float fwidth = float(m_dst.GetWidth());
+	const float fheight = float(m_dst.GetHeight());
+	const float screen_offset_x = fwidth / 2.0f;
+	const float screen_offset_y = fheight / 2.0f;
+	const float screen_scale = mmlMin(fwidth, fheight);
+	mmlVector<3> p;
+	p[0] = ((v[0] - screen_offset_x) / screen_scale) * v[2];
+	p[1] = -((v[1] - screen_offset_y) / screen_scale) * v[2];
 	p[2] = v[2];
 	return p;
 }
@@ -67,9 +81,6 @@ void platform::T3DRenderDevice::ClearBuffers(tiny3d::URect rect)
 			m_zbuf[y * m_dst.GetWidth() + x] = std::numeric_limits<float>::infinity();
 		}
 	}
-#ifdef RETRO3D_DEBUG
-	m_dst.Fill(rect, tiny3d::Color{ tiny3d::Byte(255 >> omp_get_thread_num()), 0, tiny3d::Byte(255 >> omp_get_thread_num()), tiny3d::Color::Solid });
-#endif
 }
 
 /*float platform::T3DRenderDevice::Area(const mmlVector<2> &a, const mmlVector<2> &b, const mmlVector<2> &c) const
@@ -220,7 +231,7 @@ void platform::T3DRenderDevice::RenderModel(const tiny3d::URect &rect, const pla
 
 				// Project view space vertices to screen space
 				for (tiny3d::UInt i = 0; i < num_out; ++i) {
-					out[i].v = Project(out[i].v);
+					out[i].v = ProjectWorldSpaceToScreenSpace(out[i].v);
 				}
 
 				// Early exit if resulting shape does not face camera
@@ -368,7 +379,7 @@ void platform::T3DRenderDevice::RenderSky(tiny3d::URect rect)
 
 				// Project view space vertices to screen space
 				for (tiny3d::UInt i = 0; i < num_out; ++i) {
-					out[i].v = Project(out[i].v);
+					out[i].v = ProjectWorldSpaceToScreenSpace(out[i].v);
 				}
 
 				for (tiny3d::UInt i = 0; i < num_out; ++i) {
@@ -399,13 +410,13 @@ void platform::T3DRenderDevice::RenderSky(tiny3d::URect rect)
 
 void platform::T3DRenderDevice::RenderDisplay(const tiny3d::URect &rect, const platform::T3DRenderDevice::Render3DJob &job, tiny3d::Array< retro3d::Light > &lights)
 {
-	const retro3d::ViewFrustum world_view = GetViewFrustum();
+	const retro3d::Frustum world_view = GetViewFrustum();
 
 	tiny3d::UInt num_lights = 0;
 
 	const retro3d::DisplayModel *model = job.display_model;
 	const mmlMatrix<4,4> obj_to_view = m_world_to_view * job.obj_to_world;
-	const retro3d::ViewFrustum view_frustum = world_view.ApplyTransform(job.world_to_obj);
+	const retro3d::Frustum view_frustum = world_view.ApplyTransform(job.world_to_obj);
 	const RenderMode mode = job.render_mode;
 
 	// Determine what lights affect the model
@@ -492,7 +503,7 @@ void platform::T3DRenderDevice::RenderDisplay(const tiny3d::URect &rect, const p
 
 					// Project view space vertices to screen space
 					for (tiny3d::UInt i = 0; i < num_out; ++i) {
-						out[i].v = Project(out[i].v);
+						out[i].v = ProjectWorldSpaceToScreenSpace(out[i].v);
 					}
 
 					// Early exit if resulting shape does not face camera
@@ -594,8 +605,8 @@ void platform::T3DRenderDevice::RenderAABB(const tiny3d::URect &rect, const plat
 			b = mmlLerp(a, b, a_dist / (a_dist - b_dist));
 		}
 
-		a = Project(a);
-		b = Project(b);
+		a = ProjectWorldSpaceToScreenSpace(a);
+		b = ProjectWorldSpaceToScreenSpace(b);
 
 		tiny3d::Vertex A = { tiny3d::Vector3{ tiny3d::Real(a[0]), tiny3d::Real(a[1]), tiny3d::Real(a[2]) }, tiny3d::Vector2{ tiny3d::Real(0.0f), tiny3d::Real(0.0f) }, job.color };
 		tiny3d::Vertex B = { tiny3d::Vector3{ tiny3d::Real(b[0]), tiny3d::Real(b[1]), tiny3d::Real(b[2]) }, tiny3d::Vector2{ tiny3d::Real(0.0f), tiny3d::Real(0.0f) }, job.color };
@@ -614,7 +625,7 @@ void platform::T3DRenderDevice::RenderFrustum(const tiny3d::URect &rect, const p
 	mmlVector<3> v[8];
 
 	const mmlMatrix<4,4> obj_to_view = m_world_to_view * job.obj_to_world;
-	job.obj_frustum.GetCorners(v);
+	job.obj_view_frustum.GetCorners(v);
 	for (int i = 0; i < 8; ++i) {
 		v[i] *= obj_to_view;
 	}
@@ -636,8 +647,8 @@ void platform::T3DRenderDevice::RenderFrustum(const tiny3d::URect &rect, const p
 			b = mmlLerp(a, b, a_dist / (a_dist - b_dist));
 		}
 
-		a = Project(a);
-		b = Project(b);
+		a = ProjectWorldSpaceToScreenSpace(a);
+		b = ProjectWorldSpaceToScreenSpace(b);
 
 		const tiny3d::Vertex A = { tiny3d::Vector3{ tiny3d::Real(a[0]), tiny3d::Real(a[1]), tiny3d::Real(a[2]) }, tiny3d::Vector2{ tiny3d::Real(0.0f), tiny3d::Real(0.0f) }, job.color };
 		const tiny3d::Vertex B = { tiny3d::Vector3{ tiny3d::Real(b[0]), tiny3d::Real(b[1]), tiny3d::Real(b[2]) }, tiny3d::Vector2{ tiny3d::Real(0.0f), tiny3d::Real(0.0f) }, job.color };
@@ -865,20 +876,20 @@ void platform::T3DRenderDevice::RenderAABB(const retro3d::AABB &aabb, const mmlM
 	}
 }
 
-void platform::T3DRenderDevice::RenderViewFrustum(const retro3d::ViewFrustum &frustum, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color)
+void platform::T3DRenderDevice::RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color)
 {
 	Render3DJob *job = Add3DJob(Render3DJob::Frustum, obj_to_world, LightMode_Fullbright);
 	if (job != nullptr) {
-		job->obj_frustum = frustum;
+		job->obj_view_frustum = frustum;
 		job->color       = tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid };
 	}
 }
 
-void platform::T3DRenderDevice::RenderViewFrustum(const retro3d::ViewFrustum &frustum, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color)
+void platform::T3DRenderDevice::RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color)
 {
 	Render3DJob *job = Add3DJob(Render3DJob::Frustum, obj_to_world, LightMode_Fullbright);
 	if (job != nullptr) {
-		job->obj_frustum = frustum;
+		job->obj_view_frustum = frustum;
 		job->color       = tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid };
 	}
 }
@@ -932,7 +943,7 @@ void platform::T3DRenderDevice::ExecuteJobs(tiny3d::SInt thread_num, tiny3d::SIn
 	if (update_video_out == true) {
 		GetEngine()->GetVideo()->FromImage(m_dst, out_mask);
 	}
-	ClearBuffers(thread_mask); // TODO, NOTE, BUG, HACK: Do NOT clear buffers here
+	ClearBuffers(thread_mask); // TODO, NOTE, BUG, HACK: Do NOT clear buffers here (I am only doing this to enable Debug_RenderTriangle).
 }
 
 void platform::T3DRenderDevice::FinishRender(bool update_video_out)
@@ -1024,9 +1035,33 @@ float platform::T3DRenderDevice::GetVerticalFieldOfView( void ) const
 	return m_hfov * m_aspect_ratio;
 }
 
-retro3d::ViewFrustum platform::T3DRenderDevice::GetViewFrustum( void ) const
+retro3d::Frustum platform::T3DRenderDevice::GetViewFrustum( void ) const
 {
-	return retro3d::ViewFrustum(m_hfov, m_hfov * m_aspect_ratio, m_near_z, m_far_z).ApplyTransform(m_view_to_world);
+	const float fwidth = float(m_dst.GetWidth());
+	const float fheight = float(m_dst.GetHeight());
+
+	mmlVector<3> c[4];
+	c[0][0] = 0.0f;
+	c[0][1] = 0.0f;
+	c[0][2] = m_near_z;
+
+	c[1][0] = fwidth;
+	c[1][1] = 0.0f;
+	c[1][2] = m_near_z;
+
+	c[2][0] = fwidth;
+	c[2][1] = fheight;
+	c[2][2] = m_near_z;
+
+	c[3][0] = 0.0f;
+	c[3][1] = fheight;
+	c[3][2] = m_near_z;
+
+	for (int32_t i = 0; i < 4; ++i) {
+		c[i] = ProjectScreenSpaceToWorldSpace(c[i]);
+	}
+
+	return retro3d::Frustum(mmlVector<3>::Fill(0.0f), c, 4, m_far_z).ApplyTransform(m_view_to_world);
 }
 
 void platform::T3DRenderDevice::Debug_RenderTriangle(const retro3d::Vertex &A, const retro3d::Vertex &B, const retro3d::Vertex &C, const mmlMatrix<4,4> &obj_to_world, const mmlMatrix<4,4> &world_to_view, const retro3d::Texture *texture, LightMode light_mode)
@@ -1088,7 +1123,7 @@ void platform::T3DRenderDevice::Debug_RenderTriangle(const retro3d::Vertex &A, c
 
 	// Project view space vertices to screen space
 	for (tiny3d::UInt i = 0; i < num_out; ++i) {
-		out[i].v = Project(out[i].v);
+		out[i].v = ProjectWorldSpaceToScreenSpace(out[i].v);
 	}
 
 	// Early exit if resulting shape does not face camera

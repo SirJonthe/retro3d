@@ -857,7 +857,7 @@ retro3d::Plane retro3d::Plane::ApplyTransform(const retro3d::Transform &transfor
 	return Plane(transform.TransformPoint(m_position), transform.TransformNormal(m_normal));
 }
 
-retro3d::ViewFrustum::ViewFrustum( void ) : m_origin(mmlVector<3>::Fill(0.0f))
+/*retro3d::ViewFrustum::ViewFrustum( void ) : m_origin(mmlVector<3>::Fill(0.0f))
 {
 	// NOTE: Take an extra look at the signs to make sure planes are facing correct direction
 	m_planes[Plane_Left]   = retro3d::Plane(m_origin,  retro3d::Transform::GetWorldRight());
@@ -957,10 +957,10 @@ void retro3d::ViewFrustum::GetCorners(mmlVector<3> *out) const
 	const float        far_d       = m_planes[Plane_Far].GetDistance();
 
 	// NOTE: Unsure if this is a reliable way to get direction to the corner points...
-/*	const mmlVector<3> d_tl = mmlNormalize(m_planes[Plane_Bottom].GetNormal() + m_planes[Plane_Right].GetNormal());
-	const mmlVector<3> d_tr = mmlNormalize(m_planes[Plane_Bottom].GetNormal() + m_planes[Plane_Left].GetNormal());
-	const mmlVector<3> d_br = mmlNormalize(m_planes[Plane_Top].GetNormal()    + m_planes[Plane_Left].GetNormal());
-	const mmlVector<3> d_bl = mmlNormalize(m_planes[Plane_Top].GetNormal()    + m_planes[Plane_Right].GetNormal());*/
+//	const mmlVector<3> d_tl = mmlNormalize(m_planes[Plane_Bottom].GetNormal() + m_planes[Plane_Right].GetNormal());
+//	const mmlVector<3> d_tr = mmlNormalize(m_planes[Plane_Bottom].GetNormal() + m_planes[Plane_Left].GetNormal());
+//	const mmlVector<3> d_br = mmlNormalize(m_planes[Plane_Top].GetNormal()    + m_planes[Plane_Left].GetNormal());
+//	const mmlVector<3> d_bl = mmlNormalize(m_planes[Plane_Top].GetNormal()    + m_planes[Plane_Right].GetNormal());
 
 	const mmlVector<3> ZERO = mmlVector<3>::Fill(0.0f);
 
@@ -1012,18 +1012,27 @@ retro3d::ViewFrustum retro3d::ViewFrustum::Split(float h_ratio, float v_ratio, f
 retro3d::ViewFrustum retro3d::ViewFrustum::Split(float h_ratio, float v_ratio, int h_index, int v_index) const
 {
 	return Split(h_ratio, v_ratio, 1.0f, h_index, v_index, 0);
-}
+}*/
 
-retro3d::PortalFrustum::PortalFrustum( void ) : m_planes(), m_verts(), m_origin(mmlVector<3>::Fill(0.0f))
+retro3d::Frustum::Frustum( void ) : m_planes(), m_verts(), m_origin(mmlVector<3>::Fill(0.0f))
 {}
 
+retro3d::Frustum::Frustum(const mmlVector<3> &view_point, const retro3d::Array< mmlVector<3> > &port_verts, float zfar) : Frustum()
+{
+	SetFrustum(view_point, port_verts, zfar);
+}
 
-void retro3d::PortalFrustum::SetFrustum(const mmlVector<3> &view_point, const retro3d::Array< mmlVector<3> > &port_verts, float zfar)
+retro3d::Frustum::Frustum(const mmlVector<3> &view_point, const mmlVector<3> *port_verts, int32_t port_vert_count, float zfar) : Frustum()
+{
+	SetFrustum(view_point, port_verts, port_vert_count, zfar);
+}
+
+void retro3d::Frustum::SetFrustum(const mmlVector<3> &view_point, const retro3d::Array< mmlVector<3> > &port_verts, float zfar)
 {
 	SetFrustum(view_point, &port_verts[0], port_verts.GetSize(), zfar);
 }
 
-void retro3d::PortalFrustum::SetFrustum(const mmlVector<3> &view_point, const mmlVector<3> *port_verts, int port_vert_count, float zfar)
+void retro3d::Frustum::SetFrustum(const mmlVector<3> &view_point, const mmlVector<3> *port_verts, int port_vert_count, float zfar)
 {
 	if (port_vert_count < 3) { return; }
 
@@ -1076,12 +1085,12 @@ void retro3d::PortalFrustum::SetFrustum(const mmlVector<3> &view_point, const mm
 	}
 }
 
-void retro3d::PortalFrustum::SetOrigin(const mmlVector<3> &view_point)
+void retro3d::Frustum::SetOrigin(const mmlVector<3> &view_point)
 {
 	SetFrustum(view_point, &m_verts[0], m_verts.GetSize() / 2, m_zfar);
 }
 
-retro3d::Contain retro3d::PortalFrustum::Contains(const mmlVector<3> &pt) const
+retro3d::Contain retro3d::Frustum::Contains(const mmlVector<3> &pt) const
 {
 	for (int i = 0; i < m_planes.GetSize(); ++i) {
 		if (m_planes[i].GetDistance(pt) < 0.0f) { return retro3d::Contain_False; }
@@ -1089,7 +1098,7 @@ retro3d::Contain retro3d::PortalFrustum::Contains(const mmlVector<3> &pt) const
 	return retro3d::Contain_Full;
 }
 
-retro3d::Contain retro3d::PortalFrustum::Contains(const retro3d::AABB &aabb) const
+retro3d::Contain retro3d::Frustum::Contains(const retro3d::AABB &aabb) const
 {
 	mmlVector<3> v[8];
 	aabb.GetCorners(v);
@@ -1111,7 +1120,7 @@ retro3d::Contain retro3d::PortalFrustum::Contains(const retro3d::AABB &aabb) con
 	return c;
 }
 
-mmlVector<3> retro3d::PortalFrustum::GetViewDirection( void ) const
+mmlVector<3> retro3d::Frustum::GetViewDirection( void ) const
 {
 	mmlVector<3> v = mmlVector<3>::Fill(0.0f);
 	for (int i = 0; i < m_verts.GetSize(); ++i) {
@@ -1121,34 +1130,34 @@ mmlVector<3> retro3d::PortalFrustum::GetViewDirection( void ) const
 	return retro3d::NormalFromAToB(m_origin, v);
 }
 
-mmlVector<3> retro3d::PortalFrustum::GetPortalDirection( void ) const
+mmlVector<3> retro3d::Frustum::GetPortalDirection( void ) const
 {
 	return m_planes.GetSize() > 0 ? m_planes[Plane_Near].GetNormal() : mmlVector<3>::Fill(0.0f);
 }
 
-mmlVector<3> retro3d::PortalFrustum::GetOrigin( void ) const
+mmlVector<3> retro3d::Frustum::GetOrigin( void ) const
 {
 	return m_origin;
 }
 
-uint32_t retro3d::PortalFrustum::GetPlaneCount( void ) const
+uint32_t retro3d::Frustum::GetPlaneCount( void ) const
 {
 	return uint32_t(m_planes.GetSize());
 }
 
-uint32_t retro3d::PortalFrustum::GetPortalVertexCount( void ) const
+uint32_t retro3d::Frustum::GetPortalVertexCount( void ) const
 {
 	return uint32_t(m_verts.GetSize() / 2);
 }
 
-uint32_t retro3d::PortalFrustum::GetFrustumVertexCount( void ) const
+uint32_t retro3d::Frustum::GetFrustumVertexCount( void ) const
 {
 	return uint32_t(m_verts.GetSize());
 }
 
-retro3d::PortalFrustum retro3d::PortalFrustum::ApplyTransform(const retro3d::Transform &transform) const
+retro3d::Frustum retro3d::Frustum::ApplyTransform(const retro3d::Transform &transform) const
 {
-	retro3d::PortalFrustum out = *this;
+	retro3d::Frustum out = *this;
 	for (int i = 0; i < out.m_verts.GetSize(); ++i) {
 		out.m_verts[i] *= transform;
 	}
@@ -1160,20 +1169,20 @@ retro3d::PortalFrustum retro3d::PortalFrustum::ApplyTransform(const retro3d::Tra
 	return out;
 }
 
-void retro3d::PortalFrustum::GetCorners(mmlVector<3> *out) const
+void retro3d::Frustum::GetCorners(mmlVector<3> *out) const
 {
 	for (int i = 0; i < m_verts.GetSize(); ++i) {
 		out[i] = m_verts[i];
 	}
 }
 
-void retro3d::PortalFrustum::GetCorners(retro3d::Array< mmlVector<3> > &out) const
+void retro3d::Frustum::GetCorners(retro3d::Array< mmlVector<3> > &out) const
 {
 	out.Create(int(GetFrustumVertexCount()));
 	GetCorners(&out[0]);
 }
 
-retro3d::Plane retro3d::PortalFrustum::GetPortalPlane( void ) const
+retro3d::Plane retro3d::Frustum::GetPortalPlane( void ) const
 {
 	return m_planes[Plane_Near];
 }

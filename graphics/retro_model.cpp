@@ -1961,7 +1961,7 @@ retro3d::DisplayModel::GeometryQueue retro3d::DisplayModel::BuildViewOrder(const
 	return queue;
 }
 
-void retro3d::DisplayModel::BuildViewOrder(const retro3d::ViewFrustum &view_frustum, retro3d::DisplayModel::GeometryQueue &queue) const
+void retro3d::DisplayModel::BuildViewOrder(const retro3d::Frustum &view_frustum, retro3d::DisplayModel::GeometryQueue &queue) const
 {
 	queue.Create(m_node_count, m_depth);
 
@@ -2002,7 +2002,7 @@ void retro3d::DisplayModel::BuildViewOrder(const retro3d::ViewFrustum &view_frus
 	}
 }
 
-retro3d::DisplayModel::GeometryQueue retro3d::DisplayModel::BuildViewOrder(const retro3d::ViewFrustum &view_frustum) const
+retro3d::DisplayModel::GeometryQueue retro3d::DisplayModel::BuildViewOrder(const retro3d::Frustum &view_frustum) const
 {
 	GeometryQueue queue;
 	BuildViewOrder(view_frustum, queue);

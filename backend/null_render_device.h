@@ -27,8 +27,8 @@ public:
 	void RenderLight(const retro3d::Light&) override {}
 	void RenderAABB(const retro3d::AABB&, const mmlMatrix<4,4>&, const mmlVector<3>&, bool) override {}
 	void RenderAABB(const retro3d::AABB&, const mmlMatrix<4,4>*, const mmlVector<3>&, bool) override {}
-	void RenderViewFrustum(const retro3d::ViewFrustum&, const mmlMatrix<4,4>&, const mmlVector<3>&) override {}
-	void RenderViewFrustum(const retro3d::ViewFrustum&, const mmlMatrix<4,4>*, const mmlVector<3>&) override {}
+	void RenderViewFrustum(const retro3d::Frustum&, const mmlMatrix<4,4>&, const mmlVector<3>&) override {}
+	void RenderViewFrustum(const retro3d::Frustum&, const mmlMatrix<4,4>*, const mmlVector<3>&) override {}
 	RenderDevice &RenderText(const std::string&, const mmlVector<3>&) override { return *this; }
 	RenderDevice &RenderText(int64_t, const mmlVector<3>&) override { return *this; }
 	RenderDevice &RenderText(uint64_t, const mmlVector<3>&) override { return *this; }
@@ -44,7 +44,7 @@ public:
 	bool SkyboxEnabled( void ) const override { return false; }
 	float GetHorizontalFieldOfView( void ) const override { return 0.0f; }
 	float GetVerticalFieldOfView( void ) const override { return 0.0f; }
-	retro3d::ViewFrustum GetViewFrustum( void ) const override { return retro3d::ViewFrustum(); }
+	retro3d::Frustum GetViewFrustum( void ) const override { return retro3d::Frustum(); }
 
 	void Debug_RenderTriangle(const retro3d::Vertex&, const retro3d::Vertex&, const retro3d::Vertex&, const mmlMatrix<4,4>&, const mmlMatrix<4,4>&, const retro3d::Texture*, LightMode) override {};
 };
