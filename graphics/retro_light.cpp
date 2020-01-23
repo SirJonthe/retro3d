@@ -1,5 +1,4 @@
 #include "retro_light.h"
-#include "retro_rasterizer.h"
 
 float retro3d::Light::CalculateIntensityAtVertex(const mmlVector<3> &point, const mmlVector<3> &normal) const
 {

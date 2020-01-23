@@ -14,14 +14,14 @@ void retro3d::PhysicsProperties::UpdateInertiaTensor(const mmlVector<3> &rigidbo
 	m_inv_inertia_tensor[1][1] = 3.0f / (m_mass * (h[0] * h[0] + h[2] * h[2]));
 	m_inv_inertia_tensor[2][2] = 3.0f / (m_mass * (h[0] * h[0] + h[1] * h[1]));
 
-	std::cout << "it=" << std::endl;
-	for (int i = 0; i < 3; ++i) {
-		std::cout << "\t";
-		for (int j = 0; j < 3; ++j) {
-			std::cout << m_inv_inertia_tensor[i][j] << " ";
-		}
-		std::cout << std::endl;
-	}
+//	std::cout << "it=" << std::endl;
+//	for (int i = 0; i < 3; ++i) {
+//		std::cout << "\t";
+//		for (int j = 0; j < 3; ++j) {
+//			std::cout << m_inv_inertia_tensor[i][j] << " ";
+//		}
+//		std::cout << std::endl;
+//	}
 }
 
 void retro3d::PhysicsProperties::AttachTransform(retro3d::SharedTransform t)

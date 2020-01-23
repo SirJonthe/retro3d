@@ -205,6 +205,8 @@ public:
 	void ToModel(retro3d::Model &out);
 	void FromModel(const retro3d::Model &model);
 	void MergeApproximateVertices( void );
+//	void SeparateFaces( void ); // NOTE: Store vertices in faces separately from eachother
+//	void FlipFaces( void );
 //	void MergeIdenticalVertices( void );
 	void DefragAttributes( void );
 //	void ExtractMaterial();

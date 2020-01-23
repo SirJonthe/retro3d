@@ -576,7 +576,7 @@ void retro3d::ColliderTree<leafdata_t>::Update( void )
 		Node *N = s.top();
 		s.pop();
 
-		if (N == nullptr || N->is_static == true) { continue; }
+		if (N == nullptr /*|| N->is_static == true*/) { continue; } // TODO: Skip all nodes/leaves that are static. However, due to some bug, nodes marked as static can contain dynamic leaves.
 
 		if (N->IsLeaf() == true) {
 			if (N->world_aabb.Contains(N->GetColliderWorldAABB()) <= retro3d::Contain_Partial) { // remove and re-insert if collider AABB has fully or partially slipped out of the bounds of the parent AABB
