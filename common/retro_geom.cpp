@@ -857,163 +857,6 @@ retro3d::Plane retro3d::Plane::ApplyTransform(const retro3d::Transform &transfor
 	return Plane(transform.TransformPoint(m_position), transform.TransformNormal(m_normal));
 }
 
-/*retro3d::ViewFrustum::ViewFrustum( void ) : m_origin(mmlVector<3>::Fill(0.0f))
-{
-	// NOTE: Take an extra look at the signs to make sure planes are facing correct direction
-	m_planes[Plane_Left]   = retro3d::Plane(m_origin,  retro3d::Transform::GetWorldRight());
-	m_planes[Plane_Right]  = retro3d::Plane(m_origin, -retro3d::Transform::GetWorldRight());
-	m_planes[Plane_Top]    = retro3d::Plane(m_origin, -retro3d::Transform::GetWorldUp());
-	m_planes[Plane_Bottom] = retro3d::Plane(m_origin,  retro3d::Transform::GetWorldUp());
-	m_planes[Plane_Near]   = retro3d::Plane(m_origin + mmlVector<3>(0.0, 0.0, 1.0), retro3d::Transform::GetWorldForward());
-	m_planes[Plane_Far]    = retro3d::Plane(m_origin + mmlVector<3>(0.0, 0.0, 10.0), -retro3d::Transform::GetWorldForward());
-}
-
-retro3d::ViewFrustum::ViewFrustum(float vfov, float hfov, float znear, float zfar) : m_origin(mmlVector<3>::Fill(0.0f))
-{
-	SetFrustum(vfov, hfov, znear, zfar);
-}
-
-retro3d::Contain retro3d::ViewFrustum::Contains(const mmlVector<3> &pt) const
-{
-	for (int i = 0; i < Plane_Count; ++i) {
-		if (m_planes[i].GetDistance(pt) < 0.0f) { return retro3d::Contain_False; }
-	}
-	return retro3d::Contain_Full;
-}
-
-retro3d::Contain retro3d::ViewFrustum::Contains(const retro3d::AABB &aabb) const
-{
-	mmlVector<3> v[8];
-	aabb.GetCorners(v);
-
-	retro3d::Contain c = retro3d::Contain_Full;
-	for (int p = 0; p < Plane_Count; ++p) {
-		int side = 0;
-		for (int i = 0; i < 8; ++i) {
-			if (m_planes[p].GetDistance(v[i]) < 0.0f) {
-				--side;
-			} else {
-				++side;
-			}
-		}
-		if (side == -8) { return retro3d::Contain_False; }
-		if (side !=  8) { c = retro3d::Contain_Partial; }
-	}
-
-	return c;
-}
-
-void retro3d::ViewFrustum::SetFrustum(float hfov, float vfov, float znear, float zfar)
-{
-	znear = mmlAbs(znear);
-	zfar  = mmlAbs(zfar);
-	if (znear > zfar) { mmlSwap(znear, zfar); }
-
-	hfov = mmlClamp(0.0f, hfov, mmlPI);
-	vfov = mmlClamp(0.0f, vfov, mmlPI);
-	const float hfov_ratio = hfov / mmlPI;
-	const float vfov_ratio = vfov / mmlPI;
-
-	m_origin = mmlVector<3>::Fill(0.0f);
-
-	m_planes[Plane_Near]   = retro3d::Plane(mmlVector<3>(0.0, 0.0, double(znear)),  retro3d::Transform::GetWorldForward());
-	m_planes[Plane_Far]    = retro3d::Plane(mmlVector<3>(0.0, 0.0, double(zfar)),  -retro3d::Transform::GetWorldForward());
-	m_planes[Plane_Left]   = retro3d::Plane(m_origin, mmlNormalize(mmlLerp( retro3d::Transform::GetWorldRight(), GetViewDirection(), hfov_ratio)));
-	m_planes[Plane_Right]  = retro3d::Plane(m_origin, mmlNormalize(mmlLerp(-retro3d::Transform::GetWorldRight(), GetViewDirection(), hfov_ratio)));
-	m_planes[Plane_Top]    = retro3d::Plane(m_origin, mmlNormalize(mmlLerp(-retro3d::Transform::GetWorldUp(),    GetViewDirection(), vfov_ratio)));
-	m_planes[Plane_Bottom] = retro3d::Plane(m_origin, mmlNormalize(mmlLerp( retro3d::Transform::GetWorldUp(),    GetViewDirection(), vfov_ratio)));
-}
-
-mmlVector<3> retro3d::ViewFrustum::GetViewDirection( void ) const
-{
-	return m_planes[Plane_Near].GetNormal();
-}
-
-retro3d::Plane retro3d::ViewFrustum::GetPlane(retro3d::ViewFrustum::Planes plane_index) const
-{
-	return m_planes[plane_index];
-}
-
-mmlVector<3> retro3d::ViewFrustum::GetOrigin( void ) const
-{
-	return m_origin;
-}
-
-retro3d::ViewFrustum retro3d::ViewFrustum::ApplyTransform(const retro3d::Transform &transform) const
-{
-	ViewFrustum f;
-	for (int i = 0; i < Plane_Count; ++i) {
-		f.m_planes[i] = m_planes[i].ApplyTransform(transform);
-	}
-	f.m_origin *= transform;
-	return f;
-}
-
-void retro3d::ViewFrustum::GetCorners(mmlVector<3> *out) const
-{
-	const mmlVector<3> near_normal = m_planes[Plane_Near].GetNormal();
-	const mmlVector<3> far_normal  = m_planes[Plane_Far].GetNormal();
-	const float        near_d      = m_planes[Plane_Near].GetDistance();
-	const float        far_d       = m_planes[Plane_Far].GetDistance();
-
-	// NOTE: Unsure if this is a reliable way to get direction to the corner points...
-//	const mmlVector<3> d_tl = mmlNormalize(m_planes[Plane_Bottom].GetNormal() + m_planes[Plane_Right].GetNormal());
-//	const mmlVector<3> d_tr = mmlNormalize(m_planes[Plane_Bottom].GetNormal() + m_planes[Plane_Left].GetNormal());
-//	const mmlVector<3> d_br = mmlNormalize(m_planes[Plane_Top].GetNormal()    + m_planes[Plane_Left].GetNormal());
-//	const mmlVector<3> d_bl = mmlNormalize(m_planes[Plane_Top].GetNormal()    + m_planes[Plane_Right].GetNormal());
-
-	const mmlVector<3> ZERO = mmlVector<3>::Fill(0.0f);
-
-	mglPlaneCollisionLine3D p;
-	const mmlVector<3> d_tl = mglCollision::Plane_Plane(m_planes[Plane_Top].GetNormal(), m_planes[Plane_Top].GetDistance(), m_planes[Plane_Left].GetNormal(), m_planes[Plane_Left].GetDistance(), &p) ? p.normal : ZERO;
-	const mmlVector<3> d_tr = mglCollision::Plane_Plane(m_planes[Plane_Right].GetNormal(), m_planes[Plane_Right].GetDistance(), m_planes[Plane_Top].GetNormal(), m_planes[Plane_Top].GetDistance(), &p) ? p.normal : ZERO;
-	const mmlVector<3> d_br = mglCollision::Plane_Plane(m_planes[Plane_Bottom].GetNormal(), m_planes[Plane_Bottom].GetDistance(), m_planes[Plane_Right].GetNormal(), m_planes[Plane_Right].GetDistance(), &p) ? p.normal : ZERO;
-	const mmlVector<3> d_bl = mglCollision::Plane_Plane(m_planes[Plane_Left].GetNormal(), m_planes[Plane_Left].GetDistance(), m_planes[Plane_Bottom].GetNormal(), m_planes[Plane_Bottom].GetDistance(), &p) ? p.normal : ZERO;
-
-	mglRayCollisionPoint3D col;
-	out[0] = mglCollision::Ray_Plane(m_origin, d_tl, -near_normal, -near_d, &col) ? col.point : ZERO;
-	out[1] = mglCollision::Ray_Plane(m_origin, d_tr, -near_normal, -near_d, &col) ? col.point : ZERO;
-	out[2] = mglCollision::Ray_Plane(m_origin, d_br, -near_normal, -near_d, &col) ? col.point : ZERO;
-	out[3] = mglCollision::Ray_Plane(m_origin, d_bl, -near_normal, -near_d, &col) ? col.point : ZERO;
-	out[4] = mglCollision::Ray_Plane(m_origin, d_tl,  far_normal,   far_d,  &col) ? col.point : ZERO;
-	out[5] = mglCollision::Ray_Plane(m_origin, d_tr,  far_normal,   far_d,  &col) ? col.point : ZERO;
-	out[6] = mglCollision::Ray_Plane(m_origin, d_br,  far_normal,   far_d,  &col) ? col.point : ZERO;
-	out[7] = mglCollision::Ray_Plane(m_origin, d_bl,  far_normal,   far_d,  &col) ? col.point : ZERO;
-}
-
-void retro3d::ViewFrustum::GetCorners(retro3d::Array<mmlVector<3> > &out) const
-{
-	out.Create(8);
-	GetCorners(&out[0]);
-}
-
-retro3d::ViewFrustum retro3d::ViewFrustum::Split(float h_ratio, float v_ratio, float z_ratio, int h_index, int v_index, int z_index) const
-{
-	ViewFrustum out;
-	out.m_origin = m_origin;
-
-	// h_* = x
-	// v_* = y
-
-	const mmlVector<3> h_delta = (m_planes[Plane_Right].GetNormal() - m_planes[Plane_Left].GetNormal())   * h_ratio;
-	const mmlVector<3> v_delta = (m_planes[Plane_Top].GetNormal()   - m_planes[Plane_Bottom].GetNormal()) * v_ratio;
-	const mmlVector<3> z_delta = (m_planes[Plane_Far].GetNormal()   - m_planes[Plane_Near].GetNormal())   * z_ratio;
-
-	out.m_planes[Plane_Left]   = retro3d::Plane(m_origin, mmlNormalize(m_planes[Plane_Left].GetNormal()   + h_delta * float(h_index)));
-	out.m_planes[Plane_Right]  = retro3d::Plane(m_origin, mmlNormalize(m_planes[Plane_Left].GetNormal()   + h_delta * float(h_index + 1)));
-	out.m_planes[Plane_Bottom] = retro3d::Plane(m_origin, mmlNormalize(m_planes[Plane_Bottom].GetNormal() + v_delta * float(v_index)));
-	out.m_planes[Plane_Top]    = retro3d::Plane(m_origin, mmlNormalize(m_planes[Plane_Bottom].GetNormal() + v_delta * float(v_index + 1)));
-	out.m_planes[Plane_Near]   = retro3d::Plane(m_origin, mmlNormalize(m_planes[Plane_Near].GetNormal()   + z_delta * float(z_index)));
-	out.m_planes[Plane_Far]    = retro3d::Plane(m_origin, mmlNormalize(m_planes[Plane_Near].GetNormal()   + z_delta * float(z_index + 1)));
-
-	return out;
-}
-
-retro3d::ViewFrustum retro3d::ViewFrustum::Split(float h_ratio, float v_ratio, int h_index, int v_index) const
-{
-	return Split(h_ratio, v_ratio, 1.0f, h_index, v_index, 0);
-}*/
-
 retro3d::Frustum::Frustum( void ) : m_planes(), m_verts(), m_origin(mmlVector<3>::Fill(0.0f))
 {}
 
@@ -1069,16 +912,23 @@ void retro3d::Frustum::SetFrustum(const mmlVector<3> &view_point, const mmlVecto
 		}
 		portal_normal = -portal_normal;
 	}
-	for (int i = 0; i < port_vert_count; ++i) {
-		m_verts[i+port_vert_count] = m_verts[i] + retro3d::NormalFromAToB(m_origin, m_verts[i]) * m_zfar;
-	}
+
 	m_planes.Create(2 + port_vert_count);
 	m_planes[Plane_Near] = retro3d::Plane(portal_center, portal_normal);
-	m_planes[Plane_Far]  = retro3d::Plane(
-		m_verts[port_vert_count + 2],
-		m_verts[port_vert_count + 1],
-		m_verts[port_vert_count + 0]
-	);
+	m_planes[Plane_Far] = retro3d::Plane(m_planes[Plane_Near].GetPosition() + m_planes[Plane_Near].GetNormal() * m_zfar, -m_planes[Plane_Near].GetNormal());
+
+	for (int i = 0; i < port_vert_count; ++i) {
+
+
+		mglRayCollisionPoint3D out;
+
+		if (mglCollision::Ray_Plane(m_origin, retro3d::NormalFromAToB(m_origin, m_verts[i]), m_planes[Plane_Far].GetNormal(), m_planes[Plane_Far].GetDistance(), &out) == true) {
+			m_verts[i+port_vert_count] = out.point;
+		} else {
+			// NOTE: This should never happen, so we revert to a way of calculating far points by projecting near points the input z_far distance (which is not correct, but does not require a plane intersection).
+			m_verts[i+port_vert_count] = m_verts[i] + retro3d::NormalFromAToB(m_origin, m_verts[i]) * m_zfar;
+		}
+	}
 
 	for (int p = Plane_FixedCount, i = 0, j = port_vert_count - 1; p < m_planes.GetSize(); ++p, j=i, ++i) {
 		m_planes[p] = retro3d::Plane(m_verts[i + port_vert_count], m_verts[i], m_verts[j]);
@@ -1153,6 +1003,12 @@ uint32_t retro3d::Frustum::GetPortalVertexCount( void ) const
 uint32_t retro3d::Frustum::GetFrustumVertexCount( void ) const
 {
 	return uint32_t(m_verts.GetSize());
+}
+
+mmlVector<3> retro3d::Frustum::GetPortalVertex(uint32_t i) const
+{
+	RETRO3D_ASSERT(i < GetPortalVertexCount());
+	return m_verts[i];
 }
 
 retro3d::Frustum retro3d::Frustum::ApplyTransform(const retro3d::Transform &transform) const

@@ -47,25 +47,10 @@ mmlVector<3> platform::T3DRenderDevice::ProjectWorldSpaceToScreenSpace(const mml
 	const float fheight = float(m_dst.GetHeight());
 	const float screen_offset_x = fwidth / 2.0f;
 	const float screen_offset_y = fheight / 2.0f;
-	const float screen_scale = mmlMin(fwidth, fheight);
 	mmlVector<3> p;
-	p[0] = (v[0] / v[2]) * screen_scale + screen_offset_x;
-	p[1] = -(v[1] / v[2]) * screen_scale + screen_offset_y;
-	p[2] = v[2];
-	return p;
-}
-
-mmlVector<3> platform::T3DRenderDevice::ProjectScreenSpaceToWorldSpace(const mmlVector<3> &v) const
-{
-	const float fwidth = float(m_dst.GetWidth());
-	const float fheight = float(m_dst.GetHeight());
-	const float screen_offset_x = fwidth / 2.0f;
-	const float screen_offset_y = fheight / 2.0f;
-	const float screen_scale = mmlMin(fwidth, fheight);
-	mmlVector<3> p;
-	p[0] = ((v[0] - screen_offset_x) / screen_scale) * v[2];
-	p[1] = -((v[1] - screen_offset_y) / screen_scale) * v[2];
-	p[2] = v[2];
+	p[0] =  (v[0] / v[2]) * fheight * m_hfov_scalar + screen_offset_x;
+	p[1] = -(v[1] / v[2]) * fheight * m_hfov_scalar + screen_offset_y;
+	p[2] =  v[2];
 	return p;
 }
 
@@ -691,10 +676,34 @@ void platform::T3DRenderDevice::ClearJobBuffers( void )
 	m_num_lights       = 0;
 }
 
+void platform::T3DRenderDevice::UpdateViewFrustum( void )
+{
+	const float inv_fov_scalar = 1.0f / m_hfov_scalar;
+	mmlVector<3> c[4];
+	// NOTE: Top-left
+	c[0][0] = -1.0f * m_near_z * inv_fov_scalar;
+	c[0][1] = m_aspect_ratio * m_near_z * inv_fov_scalar;
+	c[0][2] = m_near_z;
+	// NOTE: Top-right
+	c[1][0] = 1.0f * m_near_z * inv_fov_scalar;
+	c[1][1] = m_aspect_ratio * m_near_z * inv_fov_scalar;
+	c[1][2] = m_near_z;
+	// NOTE: Bottom-right
+	c[2][0] = 1.0f * m_near_z * inv_fov_scalar;
+	c[2][1] = -m_aspect_ratio * m_near_z * inv_fov_scalar;
+	c[2][2] = m_near_z;
+	// NOTE: Bottom-left
+	c[3][0] = -1.0f * m_near_z * inv_fov_scalar;
+	c[3][1] = -m_aspect_ratio * m_near_z * inv_fov_scalar;
+	c[3][2] = m_near_z;
+
+	m_object_space_view_frustum.SetFrustum(mmlVector<3>::Fill(0.0f), c, 4, m_far_z);
+}
+
 platform::T3DRenderDevice::T3DRenderDevice( void ) :
 	m_dst(), m_zbuf(),
 	m_world_to_view(mmlMatrix<4,4>::Identity()), m_view_to_world(mmlMatrix<4,4>::Identity()), m_world_to_view_ptr(&m_world_to_view),
-	m_near_z(1.0f), m_far_z(100.0f), m_hfov(mmlPI/2.0f), m_aspect_ratio(1.0f), m_near_plane(mmlVector<3>(0.0, 0.0, double(m_near_z)), retro3d::Transform::GetWorldForward()),
+	m_near_z(1.0f), m_far_z(1.0f), m_hfov(1.0f), m_aspect_ratio(1.0f), m_hfov_scalar(1.0f), m_near_plane(mmlVector<3>(0.0, 0.0, double(m_near_z)), retro3d::Transform::GetWorldForward()),
 	m_print_queue(512), m_num_print_items(0),
 	m_render_queue(512), m_num_render_items(0),
 	m_lights(16), m_num_lights(0),
@@ -704,47 +713,52 @@ platform::T3DRenderDevice::T3DRenderDevice( void ) :
 	m_depth_render(false),
 	m_render_skybox(false)
 {
-	// We want to see the inside of the box
+	// NOTE: We want to see the inside of the box.
 	m_skybox.ReverseModel();
 
-	// Adjust texture coordinates by a half the size of a texel so that they do not accidentally wrap around.
+	// NOTE: Adjust texture coordinates by a half the size of a texel so that they do not accidentally wrap around.
 	const float small_val = 0.5f / float(tiny3d::Texture::MaxDimension());
 	for (int t = 0; t < m_skybox.t.GetSize(); ++t) {
 		m_skybox.t[t][0] = mmlClamp(small_val, m_skybox.t[t][0], 1.0f - small_val);
 		m_skybox.t[t][1] = mmlClamp(small_val, m_skybox.t[t][1], 1.0f - small_val);
 	}
+
+	// NOTE: It is necessary to use this function as I do not want to repeat all calculations in the constructor.
+	SetDepthClip(1.0f, 100.0f, mmlPI/2.0f);
 }
 
 platform::T3DRenderDevice::~T3DRenderDevice( void )
 {}
 
-#if defined(__linux) || defined(__linux__) || defined (__LINUX__) || defined (__gnu_linux__)
-	#undef XLIB_THREADS
-	#define XLIB_THREADS 1
-#endif
+//#if defined(__linux) || defined(__linux__) || defined (__LINUX__) || defined (__gnu_linux__)
+//	#undef XLIB_THREADS
+//	#define XLIB_THREADS 1
+//#endif
 
-#ifdef XLIB_THREADS
-	#include "X11/Xlib.h"
-#endif
+//#ifdef XLIB_THREADS
+//	#include "X11/Xlib.h"
+//#endif
 
 bool platform::T3DRenderDevice::Init( void )
 {
-#ifdef XLIB_THREADS
-	if (XInitThreads() != True) {
-		std::cout << "[T3DRenderDevice::Init] XInitThreads failed." << std::endl;
-		return false;
-	}
-#endif
+//#ifdef XLIB_THREADS
+//	if (XInitThreads() != True) {
+//		std::cout << "[T3DRenderDevice::Init] XInitThreads failed." << std::endl;
+//		return false;
+//	}
+//#endif
 	return true;
 }
 
 void platform::T3DRenderDevice::SetDepthClip(float near_z, float far_z, float hori_fov)
 {
-	m_near_z       = mmlAbs(near_z);
+	m_near_z       = mmlMax(0.1f, mmlAbs(near_z));
 	m_far_z        = mmlAbs(far_z);
-	m_near_plane   = retro3d::Plane(mmlVector<3>(0.0, 0.0, double(m_near_z)), retro3d::Transform::GetWorldForward());
+	m_near_plane   = retro3d::Plane(mmlVector<3>(0.0, 0.0, double(m_near_z)), retro3d::Transform::GetWorldForward()); // NOTE: We could just use the view frustum plane instead of this.
 	m_hfov         = mmlClamp(0.1f, hori_fov, mmlPI - 0.1f);
 	m_aspect_ratio = m_dst.GetWidth() > 0 ? m_dst.GetHeight() / float(m_dst.GetWidth()) : 1.0f;
+	m_hfov_scalar  = 1.0f / tanf(m_hfov * 0.5f);
+	UpdateViewFrustum();
 }
 
 bool platform::T3DRenderDevice::CreateRenderSurface(uint32_t width, uint32_t height)
@@ -798,7 +812,7 @@ mmlMatrix<4,4> platform::T3DRenderDevice::GetInverseViewTransform( void ) const
 	return (m_world_to_view_ptr != &m_world_to_view) ? mmlInv(*m_world_to_view_ptr) : m_view_to_world;
 }
 
-void platform::T3DRenderDevice::RenderModel(const retro3d::Model &model, const mmlMatrix<4,4> &obj_to_world, LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
+void platform::T3DRenderDevice::RenderModel(const retro3d::Model &model, const mmlMatrix<4,4> &obj_to_world, retro3d::RenderDevice::LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
 {
 	Render3DJob *job = Add3DJob(Render3DJob::Model, obj_to_world, light_mode);
 	if (job != nullptr) {
@@ -808,7 +822,7 @@ void platform::T3DRenderDevice::RenderModel(const retro3d::Model &model, const m
 	}
 }
 
-void platform::T3DRenderDevice::RenderModel(const retro3d::Model &model, const mmlMatrix<4,4> *obj_to_world, LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
+void platform::T3DRenderDevice::RenderModel(const retro3d::Model &model, const mmlMatrix<4,4> *obj_to_world, retro3d::RenderDevice::LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
 {
 	Render3DJob *job = Add3DJob(Render3DJob::Model, obj_to_world, light_mode);
 	if (job != nullptr) {
@@ -818,16 +832,16 @@ void platform::T3DRenderDevice::RenderModel(const retro3d::Model &model, const m
 	}
 }
 
-void platform::T3DRenderDevice::RenderDisplayModel(const retro3d::DisplayModel &model, const mmlMatrix<4,4> &obj_to_world, LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
+void platform::T3DRenderDevice::RenderDisplayModel(const retro3d::DisplayModel &model, const mmlMatrix<4,4> &obj_to_world, retro3d::RenderDevice::LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
 {
 	Render3DJob *job = Add3DJob(Render3DJob::DisplayModel, obj_to_world, light_mode);
 	if (job != nullptr) {
 		job->display_model = &model;
-		job->render_mode  = render_mode;
+		job->render_mode   = render_mode;
 	}
 }
 
-void platform::T3DRenderDevice::RenderSpritePlane(const retro3d::Model &sprite_plane, const mmlMatrix<4,4> &obj_to_world, LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
+void platform::T3DRenderDevice::RenderSpritePlane(const retro3d::Model &sprite_plane, const mmlMatrix<4,4> &obj_to_world, retro3d::RenderDevice::LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
 {	
 	Render3DJob *job = Add3DJob(Render3DJob::Model, obj_to_world, light_mode);
 	if (job != nullptr) {
@@ -837,7 +851,7 @@ void platform::T3DRenderDevice::RenderSpritePlane(const retro3d::Model &sprite_p
 	}
 }
 
-void platform::T3DRenderDevice::RenderSpritePlane(const retro3d::Model &sprite_plane, const mmlMatrix<4,4> *obj_to_world, LightMode light_mode, RenderMode render_mode)
+void platform::T3DRenderDevice::RenderSpritePlane(const retro3d::Model &sprite_plane, const mmlMatrix<4,4> *obj_to_world, retro3d::RenderDevice::LightMode light_mode, retro3d::RenderDevice::RenderMode render_mode)
 {
 	Render3DJob *job = Add3DJob(Render3DJob::Model, obj_to_world, light_mode);
 	if (job != nullptr) {
@@ -881,7 +895,7 @@ void platform::T3DRenderDevice::RenderViewFrustum(const retro3d::Frustum &frustu
 	Render3DJob *job = Add3DJob(Render3DJob::Frustum, obj_to_world, LightMode_Fullbright);
 	if (job != nullptr) {
 		job->obj_view_frustum = frustum;
-		job->color       = tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid };
+		job->color            = tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid };
 	}
 }
 
@@ -890,7 +904,7 @@ void platform::T3DRenderDevice::RenderViewFrustum(const retro3d::Frustum &frustu
 	Render3DJob *job = Add3DJob(Render3DJob::Frustum, obj_to_world, LightMode_Fullbright);
 	if (job != nullptr) {
 		job->obj_view_frustum = frustum;
-		job->color       = tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid };
+		job->color            = tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid };
 	}
 }
 
@@ -1027,41 +1041,36 @@ bool platform::T3DRenderDevice::SkyboxEnabled( void ) const
 
 float platform::T3DRenderDevice::GetHorizontalFieldOfView( void ) const
 {
+	// NOTE: Returns stored horizontal FOV value.
+	//       Do not calculate the angle between the left and right view frustum planes because there is a slight difference between the stored value and the computed value.
+	//       If the computed value is used recursively in SetHorizontalFieldOfView/SetDepthClip you may get instable behavior.
+
+	// NOTE: Retrieving vertices from view frustum is dependent on the order in which they are used to construct the frustum (see UpdateViewFrustum).
+//	const mmlVector<3> left  = mmlSurfaceNormal(mmlVector<3>::Fill(0.0f), m_object_space_view_frustum.GetPortalVertex(0), m_object_space_view_frustum.GetPortalVertex(3));
+//	const mmlVector<3> right = mmlSurfaceNormal(mmlVector<3>::Fill(0.0f), m_object_space_view_frustum.GetPortalVertex(1), m_object_space_view_frustum.GetPortalVertex(2));
+//	return mmlAng(left, right);
+
 	return m_hfov;
 }
 
 float platform::T3DRenderDevice::GetVerticalFieldOfView( void ) const
 {
-	return m_hfov * m_aspect_ratio;
+	// NOTE: Measures angle between top and bottom planes of view frustum.
+
+	// NOTE: Retrieving vertices from view frustum is dependent on the order in which they are used to construct the frustum (see UpdateViewFrustum).
+	const mmlVector<3> up   = mmlSurfaceNormal(mmlVector<3>::Fill(0.0f), m_object_space_view_frustum.GetPortalVertex(0), m_object_space_view_frustum.GetPortalVertex(1));
+	const mmlVector<3> down = mmlSurfaceNormal(mmlVector<3>::Fill(0.0f), m_object_space_view_frustum.GetPortalVertex(3), m_object_space_view_frustum.GetPortalVertex(2));
+	return mmlAng(up, down);
+}
+
+void platform::T3DRenderDevice::SetHorizontalFieldOfView(float hori_fov)
+{
+	SetDepthClip(m_near_z, m_far_z, hori_fov);
 }
 
 retro3d::Frustum platform::T3DRenderDevice::GetViewFrustum( void ) const
 {
-	const float fwidth = float(m_dst.GetWidth());
-	const float fheight = float(m_dst.GetHeight());
-
-	mmlVector<3> c[4];
-	c[0][0] = 0.0f;
-	c[0][1] = 0.0f;
-	c[0][2] = m_near_z;
-
-	c[1][0] = fwidth;
-	c[1][1] = 0.0f;
-	c[1][2] = m_near_z;
-
-	c[2][0] = fwidth;
-	c[2][1] = fheight;
-	c[2][2] = m_near_z;
-
-	c[3][0] = 0.0f;
-	c[3][1] = fheight;
-	c[3][2] = m_near_z;
-
-	for (int32_t i = 0; i < 4; ++i) {
-		c[i] = ProjectScreenSpaceToWorldSpace(c[i]);
-	}
-
-	return retro3d::Frustum(mmlVector<3>::Fill(0.0f), c, 4, m_far_z).ApplyTransform(m_view_to_world);
+	return m_object_space_view_frustum.ApplyTransform(m_view_to_world);
 }
 
 void platform::T3DRenderDevice::Debug_RenderTriangle(const retro3d::Vertex &A, const retro3d::Vertex &B, const retro3d::Vertex &C, const mmlMatrix<4,4> &obj_to_world, const mmlMatrix<4,4> &world_to_view, const retro3d::Texture *texture, LightMode light_mode)

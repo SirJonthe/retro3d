@@ -77,6 +77,7 @@ private:
 	float                          m_far_z;
 	float                          m_hfov;
 	float                          m_aspect_ratio;
+	float                          m_hfov_scalar;
 	retro3d::Plane                 m_near_plane;
 	tiny3d::Array<Render2DJob>     m_print_queue;
 	tiny3d::UInt                   m_num_print_items;
@@ -87,6 +88,7 @@ private:
 	retro3d::Array<std::thread>    m_render_threads;
 	tiny3d::UInt                   m_frames_rendered;
 	retro3d::Model                 m_skybox;
+	retro3d::Frustum               m_object_space_view_frustum;
 	float                          m_mip_ratio;
 	bool                           m_depth_render;
 	bool                           m_render_skybox;
@@ -96,7 +98,6 @@ private:
 	Render3DJob  *Add3DJob(Render3DJob::Type type, const mmlMatrix<4,4> *obj_to_world, LightMode light_mode);
 	Render2DJob  *Add2DJob(Render2DJob::Type type, tiny3d::Point xy, tiny3d::Color color);
 	mmlVector<3>  ProjectWorldSpaceToScreenSpace(const mmlVector<3> &v) const;
-	mmlVector<3>  ProjectScreenSpaceToWorldSpace(const mmlVector<3> &v) const;
 	bool          IsFront(const mmlVector<3> &a, const mmlVector<3> &b, const mmlVector<3> &c) const;
 	tiny3d::UInt  ClipNear(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, retro3d::Vertex (&out)[4], bool &clipped) const;
 	void          ClearBuffers(tiny3d::URect rect);
@@ -111,6 +112,7 @@ private:
 	void          Print(tiny3d::URect rect);
 	void          ExecuteJobs(tiny3d::SInt thread_num, tiny3d::SInt dst_height_per_thread, tiny3d::SInt video_height_per_thread, bool update_video_out);
 	void          ClearJobBuffers( void );
+	void          UpdateViewFrustum( void );
 
 public:
 	T3DRenderDevice( void );
@@ -151,6 +153,7 @@ public:
 	bool SkyboxEnabled( void ) const override;
 	float GetHorizontalFieldOfView( void ) const override;
 	float GetVerticalFieldOfView( void ) const override;
+	void SetHorizontalFieldOfView(float hori_fov) override;
 	retro3d::Frustum GetViewFrustum( void ) const override;
 
 	void Debug_RenderTriangle(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, const mmlMatrix<4,4> &obj_to_world, const mmlMatrix<4,4> &world_to_view, const retro3d::Texture *texture, LightMode light_mode) override;

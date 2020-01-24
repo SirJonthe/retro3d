@@ -44,6 +44,7 @@ public:
 	bool SkyboxEnabled( void ) const override { return false; }
 	float GetHorizontalFieldOfView( void ) const override { return 0.0f; }
 	float GetVerticalFieldOfView( void ) const override { return 0.0f; }
+	void  SetHorizontalFieldOfView(float) override {}
 	retro3d::Frustum GetViewFrustum( void ) const override { return retro3d::Frustum(); }
 
 	void Debug_RenderTriangle(const retro3d::Vertex&, const retro3d::Vertex&, const retro3d::Vertex&, const mmlMatrix<4,4>&, const mmlMatrix<4,4>&, const retro3d::Texture*, LightMode) override {};

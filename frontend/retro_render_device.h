@@ -75,8 +75,8 @@ public:
 	virtual bool SkyboxEnabled( void ) const = 0;
 	virtual float GetHorizontalFieldOfView( void ) const = 0;
 	virtual float GetVerticalFieldOfView( void ) const = 0;
+	virtual void  SetHorizontalFieldOfView(float hori_fov) = 0;
 	virtual retro3d::Frustum GetViewFrustum( void ) const = 0;
-//	virtual void ToDataInterchangeFormat(retro3d::RenderDevice &data) const;
 
 	virtual void Debug_RenderTriangle(const retro3d::Vertex &a, const retro3d::Vertex &b, const retro3d::Vertex &c, const mmlMatrix<4,4> &obj_to_world, const mmlMatrix<4,4> &world_to_view, const retro3d::Texture *texture, LightMode light_mode) = 0;
 };

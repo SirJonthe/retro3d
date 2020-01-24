@@ -258,45 +258,6 @@ public:
 	Plane ApplyTransform(const retro3d::Transform &transform) const;
 };
 
-/*class ViewFrustum
-{
-public:
-	enum Planes
-	{
-		Plane_Left,
-		Plane_Right,
-		Plane_Top,
-		Plane_Bottom,
-		Plane_Near,
-		Plane_Far,
-		Plane_Count
-	};
-
-private:
-	Plane        m_planes[ViewFrustum::Plane_Count];
-	mmlVector<3> m_origin;
-
-public:
-	ViewFrustum( void );
-	ViewFrustum(float hfov, float vfov, float znear, float zfar);
-
-	Contain Contains(const mmlVector<3> &pt) const;
-	Contain Contains(const retro3d::AABB &aabb) const;
-//	mmlMatrix<4,4> GetProjectionMatrix( void ) const;
-	void SetFrustum(float hfov, float vfov, float znear, float zfar);
-
-	mmlVector<3>   GetViewDirection( void ) const;
-	retro3d::Plane GetPlane(Planes plane_index) const;
-	mmlVector<3>   GetOrigin( void ) const;
-
-	ViewFrustum    ApplyTransform(const retro3d::Transform &transform) const;
-	void           GetCorners(mmlVector<3> *out) const;
-	void           GetCorners(retro3d::Array< mmlVector<3> > &out) const;
-
-	ViewFrustum    Split(float h_ratio, float v_ratio, float z_ratio, int32_t h_index, int32_t v_index, int32_t z_index) const;
-	ViewFrustum    Split(float h_ratio, float v_ratio, int32_t h_index, int32_t v_index) const;
-};*/
-
 class Frustum
 {
 private:
@@ -334,6 +295,8 @@ public:
 	uint32_t GetPlaneCount( void ) const;
 	uint32_t GetPortalVertexCount( void ) const;
 	uint32_t GetFrustumVertexCount( void ) const;
+
+	mmlVector<3> GetPortalVertex(uint32_t i) const;
 
 	Frustum ApplyTransform(const retro3d::Transform &transform) const;
 	void    GetCorners(mmlVector<3> *out) const;
