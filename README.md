@@ -46,11 +46,11 @@ A benefit with this kind of model is two-fold; The processor can work on multipl
 
 Retro3d comes with a software renderer by default. The software renderer is meant to emulate Playstation 1 and/or Quake era games. This means low resolution, low color depth, low polygon count, no antialiasing, and primitive lighting.
 
-The renderer uses [tiny3d](https://github.com/SirJonthe/tiny3d.git) as its render API. Tiny3d offers a fast highly parallel rasterizer, and optimized texture access (Morton order, compression).
+The software renderer uses [tiny3d](https://github.com/SirJonthe/tiny3d.git) as its render API. Tiny3d offers a fast, highly parallel rasterizer, and optimized texture access (Morton order, compression).
 
 ![alt text](https://i.imgur.com/yJDghZr.png "Color cell compression")
 
-Tiny3d renders graphics, but does not interface with graphics hardware. As such tiny3d is combined with SDL in order to get access to the frame buffer and display graphics on the screen.
+Tiny3d renders graphics, but does not interface with graphics hardware. As such tiny3d is combined with SDL in order to get access to the frame buffer and display graphics on the screen. The tiny3d software renderer can be made to work with any graphics API however by converting the tin3d render device output to a display format used by the graphics API of choice.
 
 The graphics component of the engine is implemented as a platform independent device. Users of retro3d can implement their own renderers that adhere to the render device interface.
 
@@ -81,7 +81,7 @@ The input component of the engine is implemented as a platform independent devic
 
 ### General
 
-In general, retro3d uses only a few acceleration structures - mainly with regards to graphics rendering.
+In general, retro3d uses only a few acceleration structures and algorithms - mainly with regards to graphics rendering.
 
 ### Binary space partitioning (BSP)
 
@@ -101,6 +101,12 @@ While BSP trees are common practice the difficulty lies in creating a well balan
 A BVH is a binary tree that recursively groups two finite sub-spaces together to form a greater space containing both sub-spaces. A BVH has great general-purpose use within retro3d and is used to everything from collision detection, to the lighting model and the potentially visible set (PVS).
 
 ![alt text](https://i.imgur.com/m1VEvHG.png "Bounding volume hierarchy")
+
+### Mip mapping
+
+The tiny3d render device uses mip mapping (the process of reducing the resolution of the displayed textures as the ratio of texels per screen pixel increases) to improve cache coherency on the CPU. This is achieved by avoiding large texel strides on high-resolution textures rendered over a small portion of the screen by switching to a lower resolution (filtered) texture, thus making the texel strides much smaller and increasing the chance of the next texel rendered to already be located in the CPU cache.
+
+Mip mapping has the added bonus of removing visual noise and aliasing to the final image.
 
 ### Parallelism
 
@@ -197,9 +203,9 @@ Some form of console will be made available that supports viewing game output an
 
 The core of retro3d should be able to be built using most C++ compilers on essentially any platform since the core itself uses nothing but standard libraries and platform independent code. However, in order to display graphics, output audio, and send inputs to the application the engine needs non-standard modules and/or platform dependent code. By default the engine ships with support for SDL1 or SDL2 video, audio, and input devices, and a tiny3d software render device (with plans for an OpenGL or a Vulkan hardware render device).
 
-Compiling with support for SDL requires additional compilation steps. First the user needs to decide on an SDL version (SDL2 is recommended, especially on newer versions of macOS as SDL1 has poor support and require several additional build steps), by defining either the macro ```RETRO3D_USE_SDL1``` or ```RETRO3D_USE_SDL2``` at the build stage. A successful compilation of the SDL devices require that the user install SDL (1 and/or 2, see information about installation instructions via official SDL resources as instructions may vary depending on system). The SDL headers must be included in the compiler's standard search directories (if you install SDL on Linux via official package managers, this step should be done for you). For SDL1 you need to link against ```SDL```, ```SDLmain```, and ```SDL_mixer``` and for SDL2 you need to link against ```SDL2```, ```SDL2main```, and ```SDL2_mixer``` in the linker stage. macOS may also require the user to link against the ```Cocoa``` framework.
+Compiling with support for SDL requires additional compilation steps. First the user needs to decide on an SDL version (SDL2 is recommended, especially on newer versions of macOS as SDL1 has poor support and require several additional build steps), by defining either the macro ```RETRO3D_USE_SDL1``` or ```RETRO3D_USE_SDL2``` at the build stage. A successful compilation of the SDL devices require that the user install SDL (1 and/or 2, see information about installation instructions via official SDL resources as instructions will vary depending on system). The SDL headers must be included in the compiler's standard search directories (if you install SDL on Linux via official package managers, this step should be done for you). For SDL1 you need to link against ```SDL```, ```SDLmain```, and ```SDL_mixer``` and for SDL2 you need to link against ```SDL2```, ```SDL2main```, and ```SDL2_mixer``` in the linker stage. macOS builds using SDL1 may also require the user to link against the ```Cocoa``` framework.
 
-Compiling with support for the tiny3d render device requires the user to compile with support for C++11 threading (STL). Some systems (Linux with g++) requires the user to link against ```pthread``` or else the compilation will fail under the linking stage.
+Compiling with support for the tiny3d render device requires the user to compile with support for C++11 threading (STL). Some systems (Linux with g++) require the user to link against ```pthread``` or else the compilation will fail under the linking stage.
 
 ## Credits
 
@@ -208,4 +214,3 @@ The images and videos above include content from the following creators:
 Spiderbot and gun model (c) 2012 killyoverdrive (https://opengameart.org/users/killyoverdrive)
 Plant models (c) 2018 pistachio (https://opengameart.org/users/pistachio)
 Canister model (c) 2014 Ron Kapaun (https://opengameart.org/users/hreikin)
-
