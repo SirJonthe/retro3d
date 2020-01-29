@@ -53,7 +53,7 @@ struct Model : public retro3d::Asset<Model>
 	mtlShared<retro3d::Texture>        lightmap;
 	retro3d::AABB                      aabb;
 
-	// NOTE: When lightmap is available:
+	// NOTE: When lightmap is available (i.e. not null):
 	//  1) empty normal array
 	//  2) use the 'n' index to refer to lightmap uvs
 	//  3) store lightmap uvs in texture coordinate array (append last to array)
@@ -72,6 +72,41 @@ struct Model : public retro3d::Asset<Model>
 	void     AppendModel(const retro3d::Model &model, const retro3d::Transform &transform);
 	void     RefreshConnectivity( void );
 	void     DefragIndex( void );
+};
+
+class ModelObject
+{
+public:
+	struct Material : public retro3d::Asset<Material>
+	{
+		std::string                 name;
+		mmlVector<3>                diffuse_color;
+		mtlShared<retro3d::Texture> diffuse_texture;
+	};
+
+	struct Surface
+	{
+		// a series of CONNECTED faces sharing the SAME material.
+		retro3d::Array<retro3d::FaceIndex> faces;
+		retro3d::AABB                      aabb;
+		uint32_t                           material_index;
+	};
+
+private:
+	std::string                            m_name;
+	retro3d::Array< mmlVector<3> >         m_points;
+	retro3d::Array< mmlVector<2> >         m_tcoords;
+	retro3d::Array< mmlVector<3> >         m_normals;
+	retro3d::Array< Material >             m_materials;
+	retro3d::Array< Surface >              m_surfaces;
+	retro3d::Array< retro3d::FaceIndexVN > m_topography;
+	retro3d::AABB                          m_aabb;
+	mtlShared<retro3d::Texture>            m_lightmap;
+
+	// NOTE: When lightmap is available (i.e. not null):
+	//  1) empty normal array
+	//  2) use the 'n' index to refer to lightmap uvs
+	//  3) store lightmap uvs in texture coordinate array (append last to array)
 };
 
 // Vertex
@@ -215,19 +250,6 @@ public:
 	void Split(const retro3d::Plane &plane, retro3d::ModelConstructor *front, retro3d::ModelConstructor *back);
 	bool CalculateConvexity( void ) const;
 	void Debug_PrintMaterials( void ) const;
-};
-
-class ModelSet
-{
-private:
-	retro3d::Array< retro3d::Model >   m_set;
-	retro3d::Array< retro3d::Frustum > m_portals;
-	retro3d::AABB                      m_aabb;
-
-public:
-	void CreatePortals(const std::string &portal_o_name);
-	void AppendModel(const retro3d::Model &m, const retro3d::Transform &t);
-	void ApplyTransform(const retro3d::Transform &t);
 };
 
 class DisplayModel : public retro3d::Asset<DisplayModel>

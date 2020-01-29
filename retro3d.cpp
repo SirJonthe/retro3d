@@ -607,7 +607,7 @@ void retro3d::Engine::DestroySystems( void )
 void retro3d::Engine::DestroyComponents( void )
 {
 	// Build a map for components that need to be destroyed
-	Components pending;
+	/*Components pending;
 	for (Components::iterator i = m_components.begin(); i != m_components.end();) {
 		for (ComponentClass::iterator j = i->second.begin(); j != i->second.end();) {
 			if (j->second->IsDestroyed() == true) {
@@ -639,6 +639,39 @@ void retro3d::Engine::DestroyComponents( void )
 		for (ComponentClass::iterator j = i->second.begin(); j != i->second.end(); ++j) {
 			j->second->OnDestroy();
 			delete j->second;
+		}
+	}*/
+
+	ComponentIters pending;
+
+	// 1) Construct a list containing components to be removed and tell components they are about to be removed.
+	for (Components::iterator i = m_components.begin(); i != m_components.end(); ++i) {
+		for (ComponentClass::iterator j = i->second.begin(); j != i->second.end(); ++j) {
+			if (j->second->IsDestroyed() == true) {
+				pending[i->first][j->first] = j;
+				// 1.a) Tell components they are about to be removed.
+				j->second->OnDestroy();
+			}
+		}
+	}
+
+	// 2) Tell systems that component is to be removed.
+	for (Systems::iterator system = m_systems.begin(); system != m_systems.end(); ++system) {
+		ComponentIters::iterator component_class = pending.find(system->second->GetComponentClassType());
+		if (component_class != pending.end()) {
+			for (ComponentClassIters::iterator component = component_class->second.begin(); component != component_class->second.end(); ++component) {
+				system->second->OnDestroy(component->second->second);
+			}
+		}
+	}
+
+	// 3) Delete component memory and remove component from component list.
+	for (ComponentIters::iterator i = pending.begin(); i != pending.end(); ++i) {
+		for (ComponentClassIters::iterator j = i->second.begin(); j != i->second.end(); ++j) {
+			// 3.a) Delete component memory.
+			delete j->second->second;
+			// 3.b) Remove component from component list.
+			m_components[i->first].erase(j->second);
 		}
 	}
 }
@@ -713,13 +746,13 @@ void retro3d::Engine::Tick( void )
 
 	TickSystems();
 
-	m_video->Display();
-
 	DestroySystems();
 
 	DestroyComponents();
 
 	DestroyEntities();
+
+	m_video->Display();
 
 	TickGameTime();
 

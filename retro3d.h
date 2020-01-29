@@ -24,6 +24,8 @@ private:
 	typedef std::unordered_map<uint64_t, ISystem*>            Systems;
 	typedef std::unordered_map<uint64_t, retro3d::Component*> ComponentClass; // ALL components in this map are GUARANTEED being the SAME type - uint64_t = Component class ID
 	typedef std::unordered_map<uint64_t, ComponentClass>      Components; // all components - uint64_t = Entity instance ID
+	typedef std::unordered_map<uint64_t, ComponentClass::iterator> ComponentClassIters;
+	typedef std::unordered_map<uint64_t, ComponentClassIters> ComponentIters;
 	// [component_class_id][entity_instance_id] = access component of individual entity (if existing)
 	// [component_class_id] = access all components of certain type
 
