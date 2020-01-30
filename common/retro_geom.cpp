@@ -940,21 +940,25 @@ void retro3d::Frustum::SetOrigin(const mmlVector<3> &view_point)
 	SetFrustum(view_point, &m_verts[0], m_verts.GetSize() / 2, m_zfar);
 }
 
-retro3d::Contain retro3d::Frustum::Contains(const mmlVector<3> &pt) const
+retro3d::Contain retro3d::Frustum::Contains(const mmlVector<3> &pt, bool disregard_near, bool disregard_far) const
 {
-	for (int i = 0; i < m_planes.GetSize(); ++i) {
+	if (disregard_near == false && m_planes[Plane_Near].GetDistance(pt) < 0.0f) { return retro3d::Contain_False; }
+	if (disregard_far == false && m_planes[Plane_Far].GetDistance(pt) < 0.0f)   { return retro3d::Contain_False; }
+	for (int i = Plane_FixedCount; i < m_planes.GetSize(); ++i) {
 		if (m_planes[i].GetDistance(pt) < 0.0f) { return retro3d::Contain_False; }
 	}
 	return retro3d::Contain_Full;
 }
 
-retro3d::Contain retro3d::Frustum::Contains(const retro3d::AABB &aabb) const
+retro3d::Contain retro3d::Frustum::Contains(const retro3d::AABB &aabb, bool disregard_near, bool disregard_far) const
 {
 	mmlVector<3> v[8];
 	aabb.GetCorners(v);
 
 	retro3d::Contain c = retro3d::Contain_Full;
 	for (int p = 0; p < m_planes.GetSize(); ++p) {
+		if (p == int(Plane_Near) && disregard_near == true)    { continue; }
+		else if (p == int(Plane_Far) && disregard_far == true) { continue; }
 		int side = 0;
 		for (int i = 0; i < 8; ++i) {
 			if (m_planes[p].GetDistance(v[i]) < 0.0f) {

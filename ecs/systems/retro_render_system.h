@@ -19,6 +19,9 @@ private:
 	retro3d::ColliderTree<retro3d::RenderComponent> m_view_hierarchy;
 	retro3d::ColliderTree<retro3d::Light>           m_light_hierarchy;
 	retro3d::Frustum                                m_view_frustum;
+	uint32_t                                        m_render_items;
+	uint32_t                                        m_potentially_visible_items;
+	uint32_t                                        m_potentially_visible_items_counter;
 	// Shared pointer to SCENE data structure
 
 protected:
@@ -29,6 +32,9 @@ protected:
 
 public:
 	RenderSystem( void );
+
+	uint32_t GetPotentiallyVisibleCount( void ) const;
+	uint32_t GetRenderItemCount( void ) const;
 };
 
 }

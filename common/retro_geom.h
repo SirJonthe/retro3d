@@ -285,8 +285,8 @@ public:
 	void SetFrustum(const mmlVector<3> &view_point, const mmlVector<3> *port_verts, int32_t port_vert_count, float zfar);
 	void SetOrigin(const mmlVector<3> &view_point);
 
-	retro3d::Contain Contains(const mmlVector<3> &pt) const;
-	retro3d::Contain Contains(const retro3d::AABB &aabb) const;
+	retro3d::Contain Contains(const mmlVector<3> &pt, bool disregard_near = false, bool disregard_far = false) const;
+	retro3d::Contain Contains(const retro3d::AABB &aabb, bool disregard_near = false, bool disregard_far = false) const;
 
 	mmlVector<3> GetViewDirection( void ) const;
 	mmlVector<3> GetPortalDirection( void ) const;
