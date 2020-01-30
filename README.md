@@ -106,7 +106,7 @@ A BVH is a binary tree that recursively groups two finite sub-spaces together to
 
 The tiny3d render device uses mip mapping (the process of reducing the resolution of the displayed textures as the ratio of texels per screen pixel increases) to improve cache coherency on the CPU. This is achieved by avoiding large texel strides on high-resolution textures rendered over a small portion of the screen by switching to a lower resolution (filtered) texture, thus making the texel strides much smaller and increasing the chance of the next texel rendered to already be located in the CPU cache.
 
-Mip mapping has the added bonus of removing visual noise and aliasing to the final image.
+Mip mapping has the added bonus of removing visual noise and aliasing from the final image.
 
 ### Parallelism
 
