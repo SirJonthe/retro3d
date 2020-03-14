@@ -60,6 +60,7 @@ public:
 	virtual void RenderAABB(const retro3d::AABB &aabb, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.0, 1.0, 0.0), bool world_axis_aligned = true) = 0;
 	virtual void RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color = mmlVector<3>::Fill(0.5f)) = 0;
 	virtual void RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>::Fill(0.5f)) = 0;
+	virtual void RenderOverlay(const tiny3d::Overlay &overlay, const retro3d::Rect &src_region, const retro3d::Rect &dst_region) = 0;
 	virtual RenderDevice &RenderText(const std::string &str, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;
 	virtual RenderDevice &RenderText(int64_t n, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;
 	virtual RenderDevice &RenderText(uint64_t n, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;

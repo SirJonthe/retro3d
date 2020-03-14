@@ -36,7 +36,7 @@ private:
 	struct Render2DJob // in separate array
 	{
 		enum Type {
-			Text, AABB
+			Text, TextFree, Overlay
 		};
 
 		std::string   text;
@@ -44,6 +44,10 @@ private:
 		tiny3d::Point xy;
 		Type          type;
 		bool          to_console;
+
+		const tiny3d::Overlay *overlay;
+		retro3d::Rect src_rect;
+		retro3d::Rect dst_rect;
 	};
 
 	enum BoxSides
@@ -59,10 +63,10 @@ private:
 
 	struct Jobs
 	{
-		tiny3d::Array<Render2DJob>     m_print_queue;
-		tiny3d::UInt                   m_num_print_items;
-		tiny3d::Array<Render3DJob>     m_render_queue;
-		tiny3d::UInt                   m_num_render_items;
+		tiny3d::Array<Render2DJob>     m_2d_queue;
+		tiny3d::UInt                   m_num_2d_items;
+		tiny3d::Array<Render3DJob>     m_3d_queue;
+		tiny3d::UInt                   m_num_3d_items;
 		tiny3d::Array<retro3d::Light>  m_lights;
 		tiny3d::UInt                   m_num_lights;
 	};
@@ -79,10 +83,10 @@ private:
 	float                          m_aspect_ratio;
 	float                          m_hfov_scalar;
 	retro3d::Plane                 m_near_plane;
-	tiny3d::Array<Render2DJob>     m_print_queue;
-	tiny3d::UInt                   m_num_print_items;
-	tiny3d::Array<Render3DJob>     m_render_queue;
-	tiny3d::UInt                   m_num_render_items;
+	tiny3d::Array<Render2DJob>     m_2d_queue;
+	tiny3d::UInt                   m_num_2d_items;
+	tiny3d::Array<Render3DJob>     m_3d_queue;
+	tiny3d::UInt                   m_num_3d_items;
 	tiny3d::Array<retro3d::Light>  m_lights;
 	tiny3d::UInt                   m_num_lights;
 	retro3d::Array<std::thread>    m_render_threads;
@@ -138,6 +142,7 @@ public:
 	void RenderAABB(const retro3d::AABB &aabb, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.0, 1.0, 0.0), bool world_axis_aligned = true) override;
 	void RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> &obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.5, 0.5, 0.5)) override;
 	void RenderViewFrustum(const retro3d::Frustum &frustum, const mmlMatrix<4,4> *obj_to_world, const mmlVector<3> &color = mmlVector<3>(0.5, 0.5, 0.5)) override;
+	void RenderOverlay(const tiny3d::Overlay &overlay, const retro3d::Rect &src_region, const retro3d::Rect &dst_region) override;
 	RenderDevice &RenderText(const std::string &str, const mmlVector<3> &color) override;
 	RenderDevice &RenderText(int64_t n, const mmlVector<3> &color) override;
 	RenderDevice &RenderText(uint64_t n, const mmlVector<3> &color) override;

@@ -731,24 +731,19 @@ bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::A
 
 uint64_t retro3d::ModelConstructor::Hash(int32_t a)
 {
-	const uint32_t ua = *reinterpret_cast<uint32_t*>(&a);
+	const uint32_t ua = a >= 0 ? *reinterpret_cast<uint32_t*>(&a) : NO_INDEX;
 	return uint64_t(ua);
 }
 
 uint64_t retro3d::ModelConstructor::Hash(int32_t a, int32_t b)
 {
 	// NOTE: A unique hash of two indices where h(a,b) = h(b,a)
-	const uint32_t ua = *reinterpret_cast<uint32_t*>(&a);
-	const uint32_t ub = *reinterpret_cast<uint32_t*>(&b);
-	return (uint64_t( (a > b ? ua : ub) ) << 32) | uint64_t( a > b ? ub : ua );
-
+	if (a < 0 || b < 0) { return uint64_t(NO_INDEX); }
 	return (Hash(mmlMin(a, b)) << 32) | Hash(mmlMax(a, b));
 }
 
 void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out, const retro3d::ModelConstructor::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
 {
-	// NOTE, TODO: What should I do when fi contains negative indices???
-
 	FaceMap *out_face = &out->m[current_material_index].f[uint64_t(out->m[current_material_index].f.size())]; // NOTE: Adding an element last to the table.
 	out_face->i.Create(clipped_v.GetSize());
 
@@ -759,12 +754,14 @@ void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out,
 	uint64_t ht = 0;
 	uint64_t hn = 0;
 
+	bool is_clipped = false;
+
 	while (c < clipped_v.GetSize()) {
 		if (clipped_v[c] == v[unclipped_index.i[u].v]) {
 
-			hv = Hash(unclipped_index.i[u].v);
-			ht = Hash(unclipped_index.i[u].t);
-			hn = Hash(unclipped_index.i[u].n);
+			hv = unclipped_index.i[u].v;
+			ht = unclipped_index.i[u].t;
+			hn = unclipped_index.i[u].n;
 
 			u = (u + 1) % unclipped_index.i.GetSize();
 		} else {
@@ -782,17 +779,47 @@ void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out,
 			hv = Hash(unclipped_index.i[u].v, unclipped_index.i[u0].v);
 			ht = Hash(unclipped_index.i[u].t, unclipped_index.i[u0].t);
 			hn = Hash(unclipped_index.i[u].n, unclipped_index.i[u0].n);
+
+			is_clipped = true;
 		}
 
 		out->v[hv] = clipped_v[c];
-		out->t[ht] = clipped_t[c];
-		out->n[hn] = mmlNormalizeIf(clipped_n[c]);
+		if (ht != NO_INDEX && clipped_t.GetSize() == clipped_v.GetSize()) {
+			out->t[ht] = clipped_t[c];
+		}
+		if (hn != NO_INDEX && clipped_n.GetSize() == clipped_v.GetSize()) {
+			out->n[hn] = mmlNormalizeIf(clipped_n[c]);
+		}
 
 		out_face->i[c].v = hv;
 		out_face->i[c].t = ht;
 		out_face->i[c].n = hn;
 
 		++c;
+	}
+
+	if (is_clipped) {
+		std::cout << "+" << out_face->i.GetSize() << std::endl;
+		for (int i = 0; i < out_face->i.GetSize(); ++i) {
+			std::cout << "  (" << out_face->i[i].v << ") " << out->v[out_face->i[i].v][0] << "," << out->v[out_face->i[i].v][1] << "," << out->v[out_face->i[i].v][2] << std::endl;
+		}
+	} else {
+		//
+	}
+}
+
+void retro3d::ModelConstructor::UpdateAABB( void )
+{
+	if (v.size() > 0) {
+		mmlVector<3> min, max;
+		min = max = v.begin()->second;
+		for (auto it = v.begin(); it != v.end(); ++it) {
+			min = mmlMin(min, it->second);
+			max = mmlMax(max, it->second);
+		}
+		aabb.SetExtremes(min, max);
+	} else {
+		aabb = retro3d::AABB();
 	}
 }
 
@@ -810,6 +837,7 @@ void retro3d::ModelConstructor::ToModel(retro3d::Model &out)
 	v_table.reserve(v.size());
 	out.v.Create(int(v.size()));
 	i = 0;
+	v_table[NO_INDEX] = -1;
 	for (auto it = v.begin(); it != v.end(); ++it) {
 		out.v[i] = it->second;
 		v_table[it->first] = i;
@@ -819,31 +847,39 @@ void retro3d::ModelConstructor::ToModel(retro3d::Model &out)
 	t_table.reserve(t.size());
 	out.t.Create(int(t.size()));
 	i = 0;
+	t_table[NO_INDEX] = -1;
 	for (auto it = t.begin(); it != t.end(); ++it) {
-		out.t[i] = it->second;
-		t_table[it->first] = i;
-		++i;
+		if (it->first != NO_INDEX) {
+			out.t[i] = it->second;
+			t_table[it->first] = i;
+			++i;
+		}
 	}
 
 	n_table.reserve(n.size());
 	out.n.Create(int(n.size()));
 	i = 0;
+	n_table[NO_INDEX] = -1;
 	for (auto it = n.begin(); it != n.end(); ++it) {
-		out.n[i] = it->second;
-		n_table[it->first] = i;
-		++i;
+		if (it->first != NO_INDEX) {
+			out.n[i] = it->second;
+			n_table[it->first] = i;
+			++i;
+		}
 	}
 
 	out.m.Create(m.GetSize());
+	bool is_clipped = false;
 	for (int32_t mit = 0; mit != out.m.GetSize(); ++mit) {
 		retro3d::Material *ma = &out.m[mit];
 		const MaterialMap *mb = &m[mit];
 		ma->name = mb->name;
 		ma->cd = mb->cd;
 		ma->td = mb->td;
-		ma->f.SetCapacity(mb->f.size());
+		ma->f.SetCapacity(int(mb->f.size()));
 		ma->f.Resize(0);
 		for (auto fit = mb->f.begin(); fit != mb->f.end(); ++fit) {
+			is_clipped = false;
 			retro3d::FaceIndex *fa = &out.m[mit].f.Add();
 			const FaceMap      *fb = &fit->second;
 			fa->Create(fb->i.GetSize());
@@ -853,6 +889,18 @@ void retro3d::ModelConstructor::ToModel(retro3d::Model &out)
 				ia->v = v_table[ib->v];
 				ia->t = t_table[ib->t];
 				ia->n = n_table[ib->n];
+
+				if (ib->v > NO_INDEX) {
+					is_clipped = true;
+				}
+			}
+			if (is_clipped) {
+				std::cout << "-" << fa->GetSize() << std::endl;
+				for (int i = 0; i < fa->GetSize(); ++i) {
+					const retro3d::IndexVTN *ia = &(*fa)[i];
+					const IndexMap          *ib = &fb->i[i];
+					std::cout << "  (" << ib->v << ") " << v[ib->v][0] << "," << v[ib->v][1] << "," << v[ib->v][2] << " -> " << "(" << ia->v << ")" << out.v[ia->v][0] << "," << out.v[ia->v][1] << "," << out.v[ia->v][2] << std::endl;
+				}
 			}
 		}
 	}
@@ -902,7 +950,7 @@ void retro3d::ModelConstructor::FromModel(const retro3d::Model &in)
 	}
 }
 
-void retro3d::ModelConstructor::MergeApproximateVertices( void )
+void retro3d::ModelConstructor::MergeApproximateVertices(float EPSILON)
 {
 	// NOTE: Remove all similar vertices in the model by merging the faces together.
 	// BUG:  Does not work (a invalidated when b is erased?).
@@ -914,7 +962,7 @@ void retro3d::ModelConstructor::MergeApproximateVertices( void )
 		for (auto b = ++hack_offset; b != v.end(); ++b) {
 			int j = 0;
 			for (; j < 3; ++j) {
-				if (mmlIsApproxEqual(a->second[j], b->second[j]) == false) {
+				if (mmlIsApproxEqual(a->second[j], b->second[j], EPSILON) == false) {
 					break;
 				}
 			}
@@ -1065,18 +1113,38 @@ void retro3d::ModelConstructor::Split(const retro3d::Plane &plane, retro3d::Mode
 			clip_v.Create(fit->second.i.GetSize());
 			clip_t.Create(fit->second.i.GetSize());
 			clip_n.Create(fit->second.i.GetSize());
+
+			bool has_normals = true;
+			bool has_tcoords = true;
+
 			int32_t i = 0;
 			for (int32_t vit = 0; vit < fit->second.i.GetSize(); ++vit) {
 				clip_v[i] = v[fit->second.i[vit].v];
-				clip_t[i] = t[fit->second.i[vit].t];
-				clip_n[i] = n[fit->second.i[vit].n];
+				if (has_tcoords == true) {
+					if (fit->second.i[vit].t != NO_INDEX && has_tcoords == true) { clip_t[i] = t[fit->second.i[vit].t]; }
+					else { has_tcoords = false; }
+				}
+				if (has_normals == true) {
+					if (fit->second.i[vit].n != NO_INDEX && has_normals == true) { clip_n[i] = n[fit->second.i[vit].n]; }
+					else { has_normals = false; }
+				}
 				++i;
 			}
 
 			// NOTE: Clip the polygon's attributes.
 			plane.Clip(clip_v, clip_v, (front != nullptr) ? &front_v : nullptr, (back != nullptr) ? &back_v : nullptr);
-			plane.Clip(clip_v, clip_t, (front != nullptr) ? &front_t : nullptr, (back != nullptr) ? &back_t : nullptr);
-			plane.Clip(clip_v, clip_n, (front != nullptr) ? &front_n : nullptr, (back != nullptr) ? &back_n : nullptr);
+			if (has_tcoords == true) {
+				plane.Clip(clip_v, clip_t, (front != nullptr) ? &front_t : nullptr, (back != nullptr) ? &back_t : nullptr);
+			} else {
+				front_t.Free();
+				back_t.Free();
+			}
+			if (has_normals == true) {
+				plane.Clip(clip_v, clip_n, (front != nullptr) ? &front_n : nullptr, (back != nullptr) ? &back_n : nullptr);
+			} else {
+				front_n.Free();
+				back_n.Free();
+			}
 
 			// NOTE: Put the attributes back to appropriate location.
 			if (front != nullptr) { StoreClippedFace(front, fit->second, mit, front_v, front_t, front_n); }
@@ -1088,6 +1156,7 @@ void retro3d::ModelConstructor::Split(const retro3d::Plane &plane, retro3d::Mode
 		if (front->v.size() > 0) {
 			front->name     = name;
 			front->lightmap = lightmap;
+			front->UpdateAABB();
 		} else {
 			front->Destroy();
 		}
@@ -1096,6 +1165,7 @@ void retro3d::ModelConstructor::Split(const retro3d::Plane &plane, retro3d::Mode
 		if (back->v.size() > 0) {
 			back->name     = name;
 			back->lightmap = lightmap;
+			back->UpdateAABB();
 		} else {
 			back->Destroy();
 		}

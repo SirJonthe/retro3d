@@ -29,6 +29,7 @@ public:
 	void RenderAABB(const retro3d::AABB&, const mmlMatrix<4,4>*, const mmlVector<3>&, bool) override {}
 	void RenderViewFrustum(const retro3d::Frustum&, const mmlMatrix<4,4>&, const mmlVector<3>&) override {}
 	void RenderViewFrustum(const retro3d::Frustum&, const mmlMatrix<4,4>*, const mmlVector<3>&) override {}
+	void RenderOverlay(const tiny3d::Overlay&, const retro3d::Rect&, const retro3d::Rect&) override {}
 	RenderDevice &RenderText(const std::string&, const mmlVector<3>&) override { return *this; }
 	RenderDevice &RenderText(int64_t, const mmlVector<3>&) override { return *this; }
 	RenderDevice &RenderText(uint64_t, const mmlVector<3>&) override { return *this; }

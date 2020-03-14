@@ -8,36 +8,43 @@
 
 platform::T3DRenderDevice::Render3DJob *platform::T3DRenderDevice::Add3DJob(platform::T3DRenderDevice::Render3DJob::Type type, const mmlMatrix<4,4> &obj_to_world, retro3d::RenderDevice::LightMode light_mode)
 {
-	if (m_num_render_items >= m_render_queue.GetSize()) {
+	if (m_num_3d_items >= m_3d_queue.GetSize()) {
 		RenderText(retro_text_err("render overflow\n"));
 		return nullptr;
 	} else {
-		m_render_queue[m_num_render_items].type             = type;
-		m_render_queue[m_num_render_items].light_mode       = light_mode;
-		m_render_queue[m_num_render_items].obj_to_world     = obj_to_world;
-		m_render_queue[m_num_render_items].world_to_obj     = mmlInv(obj_to_world);
-		m_render_queue[m_num_render_items].obj_to_world_ptr = &m_render_queue[m_num_render_items].obj_to_world;
-		++m_num_render_items;
+		m_3d_queue[m_num_3d_items].type             = type;
+		m_3d_queue[m_num_3d_items].light_mode       = light_mode;
+		m_3d_queue[m_num_3d_items].obj_to_world     = obj_to_world;
+		m_3d_queue[m_num_3d_items].world_to_obj     = mmlInv(obj_to_world);
+		m_3d_queue[m_num_3d_items].obj_to_world_ptr = &m_3d_queue[m_num_3d_items].obj_to_world;
+		++m_num_3d_items;
 	}
-	return &m_render_queue[m_num_render_items - 1];
+	return &m_3d_queue[m_num_3d_items - 1];
 }
 
 platform::T3DRenderDevice::Render3DJob *platform::T3DRenderDevice::Add3DJob(platform::T3DRenderDevice::Render3DJob::Type type, const mmlMatrix<4,4> *obj_to_world, retro3d::RenderDevice::LightMode light_mode)
 {
-	if (m_num_render_items >= m_render_queue.GetSize()) {
+	if (m_num_3d_items >= m_3d_queue.GetSize()) {
 		RenderText(retro_text_err("render overflow\n"));
 		return nullptr;
 	} else {
-		m_render_queue[m_num_render_items].type             = type;
-		m_render_queue[m_num_render_items].light_mode       = light_mode;
-		m_render_queue[m_num_render_items].obj_to_world_ptr = obj_to_world;
-		++m_num_render_items;
+		m_3d_queue[m_num_3d_items].type             = type;
+		m_3d_queue[m_num_3d_items].light_mode       = light_mode;
+		m_3d_queue[m_num_3d_items].obj_to_world_ptr = obj_to_world;
+		++m_num_3d_items;
 	}
-	return &m_render_queue[m_num_render_items - 1];
+	return &m_3d_queue[m_num_3d_items - 1];
 }
 
 platform::T3DRenderDevice::Render2DJob *platform::T3DRenderDevice::Add2DJob(platform::T3DRenderDevice::Render2DJob::Type type, tiny3d::Point xy, tiny3d::Color color)
 {
+	if (m_num_2d_items < m_2d_queue.GetSize()) {
+		m_2d_queue[m_num_2d_items].type  = type;
+		m_2d_queue[m_num_2d_items].xy    = xy;
+		m_2d_queue[m_num_2d_items].color = color;
+		++m_num_2d_items;
+		return &m_2d_queue[m_num_2d_items - 1];
+	}
 	return nullptr;
 }
 
@@ -97,22 +104,22 @@ void platform::T3DRenderDevice::Render(tiny3d::URect rect)
 {
 	tiny3d::Array< retro3d::Light > temp_light_array(m_num_lights);
 
-	for (tiny3d::UInt n = 0; n < m_num_render_items; ++n) {
-		switch (m_render_queue[n].type) {
+	for (tiny3d::UInt n = 0; n < m_num_3d_items; ++n) {
+		switch (m_3d_queue[n].type) {
 		case Render3DJob::Model:
-			RenderModel(rect, m_render_queue[n], temp_light_array);
+			RenderModel(rect, m_3d_queue[n], temp_light_array);
 			break;
 		case Render3DJob::DisplayModel:
-			RenderDisplay(rect, m_render_queue[n], temp_light_array);
+			RenderDisplay(rect, m_3d_queue[n], temp_light_array);
 			break;
 		case Render3DJob::Text:
 			// Implement 3D text
 			break;
 		case Render3DJob::AABB:
-			RenderAABB(rect, m_render_queue[n], temp_light_array);
+			RenderAABB(rect, m_3d_queue[n], temp_light_array);
 			break;
 		case Render3DJob::Frustum:
-			RenderFrustum(rect, m_render_queue[n], temp_light_array);
+			RenderFrustum(rect, m_3d_queue[n], temp_light_array);
 			break;
 		default: break;
 		}
@@ -663,17 +670,31 @@ void platform::T3DRenderDevice::Print(tiny3d::URect rect)
 {
 	const tiny3d::SInt caret_offset = 2;
 	tiny3d::Point caret = { caret_offset, caret_offset };
-	for (tiny3d::UInt n = 0; n < m_num_print_items; ++n) {
-		Render2DJob p = m_print_queue[n];
-		caret = tiny3d::DrawChars(m_dst, caret, caret_offset, p.text.c_str(), tiny3d::UInt(p.text.size()), p.color, 1, &rect);
+	for (tiny3d::UInt n = 0; n < m_num_2d_items; ++n) {
+
+		const Render2DJob &p = m_2d_queue[n];
+
+		switch (p.type) {
+		case Render2DJob::Text:
+			tiny3d::DrawChars(m_dst, tiny3d::Point{ caret.x + 1, caret.y + 1 }, caret_offset, p.text.c_str(), tiny3d::UInt(p.text.size()), tiny3d::Color{0,0,0,tiny3d::Color::Solid}, 1, &rect);
+			caret = tiny3d::DrawChars(m_dst, caret, caret_offset, p.text.c_str(), tiny3d::UInt(p.text.size()), p.color, 1, &rect);
+			break;
+		case Render2DJob::TextFree:
+			tiny3d::DrawChars(m_dst, tiny3d::Point{ p.xy.x + 1, p.xy.y + 1 }, p.xy.x, p.text.c_str(), tiny3d::UInt(p.text.size()), tiny3d::Color{0,0,0,tiny3d::Color::Solid}, 1, &rect);
+			caret = tiny3d::DrawChars(m_dst, p.xy, p.xy.x, p.text.c_str(), tiny3d::UInt(p.text.size()), p.color, 1, &rect);
+			break;
+		case Render2DJob::Overlay:
+			tiny3d::DrawRegion(m_dst, p.dst_rect, *p.overlay, p.src_rect, &rect);
+			break;
+		}
 	}
 }
 
 void platform::T3DRenderDevice::ClearJobBuffers( void )
 {
-	m_num_render_items = 0;
-	m_num_print_items  = 0;
-	m_num_lights       = 0;
+	m_num_3d_items = 0;
+	m_num_2d_items = 0;
+	m_num_lights   = 0;
 }
 
 void platform::T3DRenderDevice::UpdateViewFrustum( void )
@@ -704,8 +725,8 @@ platform::T3DRenderDevice::T3DRenderDevice( void ) :
 	m_dst(), m_zbuf(),
 	m_world_to_view(mmlMatrix<4,4>::Identity()), m_view_to_world(mmlMatrix<4,4>::Identity()), m_world_to_view_ptr(&m_world_to_view),
 	m_near_z(1.0f), m_far_z(1.0f), m_hfov(1.0f), m_aspect_ratio(1.0f), m_hfov_scalar(1.0f), m_near_plane(mmlVector<3>(0.0, 0.0, double(m_near_z)), retro3d::Transform::GetWorldForward()),
-	m_print_queue(512), m_num_print_items(0),
-	m_render_queue(512), m_num_render_items(0),
+	m_2d_queue(512), m_num_2d_items(0),
+	m_3d_queue(512), m_num_3d_items(0),
 	m_lights(16), m_num_lights(0),
 	m_frames_rendered(0),
 	m_skybox(*retro3d::Model::Library.Fetch("Default.Cube.Model").GetShared()),
@@ -908,15 +929,22 @@ void platform::T3DRenderDevice::RenderViewFrustum(const retro3d::Frustum &frustu
 	}
 }
 
+void platform::T3DRenderDevice::RenderOverlay(const tiny3d::Overlay &overlay, const retro3d::Rect &src_region, const retro3d::Rect &dst_region)
+{
+	Render2DJob *job = Add2DJob(Render2DJob::Overlay, tiny3d::Point{ 0,0 }, tiny3d::Color{ 0,0,0,tiny3d::Color::Transparent });
+	if (job != nullptr) {
+		job->overlay = &overlay;
+		job->dst_rect = dst_region;
+		job->src_rect = src_region;
+	}
+}
+
 retro3d::RenderDevice &platform::T3DRenderDevice::RenderText(const std::string &str, const mmlVector<3> &color)
 {
-	if (m_num_print_items >= m_print_queue.GetSize()) {
-		m_print_queue[m_print_queue.GetSize() - 1].text  = "message overflow\n";
-		m_print_queue[m_print_queue.GetSize() - 1].color = tiny3d::Color{ 255, 0, 0, tiny3d::Color::Solid };
-	} else {
-		m_print_queue[m_num_print_items].text  = str;
-		m_print_queue[m_num_print_items].color = tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid };
-		++m_num_print_items;
+	Render2DJob *job = Add2DJob(Render2DJob::Text, tiny3d::Point{ 0,0 }, tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid });
+	if (job != nullptr) {
+		job->text = str;
+		++m_num_2d_items;
 	}
 	return *this;
 }

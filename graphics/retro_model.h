@@ -74,7 +74,7 @@ struct Model : public retro3d::Asset<Model>
 	void     DefragIndex( void );
 };
 
-class ModelObject
+class ObjectModel
 {
 public:
 	struct Material : public retro3d::Asset<Material>
@@ -108,6 +108,8 @@ private:
 	//  2) use the 'n' index to refer to lightmap uvs
 	//  3) store lightmap uvs in texture coordinate array (append last to array)
 };
+
+// LoadOBJ -> Returns a series of ModelObjects depending on number of 'o' in OBJ file.
 
 // Vertex
 void         TransformVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::Transform &t);
@@ -210,6 +212,7 @@ private:
 	template < typename type_t >
 	using Map = std::unordered_map<uint64_t, type_t >;
 
+	static constexpr uint32_t NO_INDEX = -uint32_t(1);
 	struct IndexMap { uint64_t v, t, n; };
 	struct FaceMap  { retro3d::Array<IndexMap> i; };
 	struct MaterialMap
@@ -234,12 +237,13 @@ private:
 	static uint64_t Hash(int32_t a);
 	static uint64_t Hash(int32_t a, int32_t b);
 	void            StoreClippedFace(ModelConstructor *out, const FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n);
+	void            UpdateAABB( void );
 
 public:
 //	void ExtractMaterial(retro3d::Model &out);
 	void ToModel(retro3d::Model &out);
 	void FromModel(const retro3d::Model &model);
-	void MergeApproximateVertices( void );
+	void MergeApproximateVertices(float EPSILON = std::numeric_limits<float>::epsilon());
 //	void SeparateFaces( void ); // NOTE: Store vertices in faces separately from eachother
 //	void FlipFaces( void );
 //	void MergeIdenticalVertices( void );
