@@ -34,6 +34,28 @@ typedef retro3d::Array<retro3d::IndexVTN> FaceIndex;
 typedef retro3d::Array<retro3d::IndexVN>  FaceIndexVN;
 typedef retro3d::Array<retro3d::IndexV>   FaceIndexV;
 
+void Convert(const retro3d::IndexVTN &src, retro3d::IndexV &dst);
+void Convert(const retro3d::IndexVTN &src, retro3d::IndexVN &dst);
+void Convert(const retro3d::IndexV &src, retro3d::IndexVTN &dst);
+void Convert(const retro3d::IndexV &src, retro3d::IndexVN &dst);
+void Convert(const retro3d::IndexVN &src, retro3d::IndexVTN &dst);
+void Convert(const retro3d::IndexVN &src, retro3d::IndexV &dst);
+
+void Convert(const retro3d::FaceIndex &src, retro3d::FaceIndexV &dst);
+void Convert(const retro3d::FaceIndex &src, retro3d::FaceIndexVN &dst);
+void Convert(const retro3d::FaceIndexV &src, retro3d::FaceIndex &dst);
+void Convert(const retro3d::FaceIndexV &src, retro3d::FaceIndexVN &dst);
+void Convert(const retro3d::FaceIndexVN &src, retro3d::FaceIndex &dst);
+void Convert(const retro3d::FaceIndexVN &src, retro3d::FaceIndexV &dst);
+
+void Convert(const retro3d::Array< retro3d::FaceIndex > &src, retro3d::Array< retro3d::FaceIndexV > &dst);
+void Convert(const retro3d::Array< retro3d::FaceIndex > &src, retro3d::Array< retro3d::FaceIndexVN > &dst);
+void Convert(const retro3d::Array< retro3d::FaceIndexV > &src, retro3d::Array< retro3d::FaceIndex > &dst);
+void Convert(const retro3d::Array< retro3d::FaceIndexV > &src, retro3d::Array< retro3d::FaceIndexVN > &dst);
+void Convert(const retro3d::Array< retro3d::FaceIndexVN > &src, retro3d::Array< retro3d::FaceIndex > &dst);
+void Convert(const retro3d::Array< retro3d::FaceIndexVN > &src, retro3d::Array< retro3d::FaceIndexV > &dst);
+
+
 struct Material : public retro3d::Asset<Material>
 {
 	std::string                        name;
@@ -74,41 +96,6 @@ struct Model : public retro3d::Asset<Model>
 	void     DefragIndex( void );
 };
 
-class ObjectModel
-{
-public:
-	struct Material : public retro3d::Asset<Material>
-	{
-		std::string                 name;
-		mmlVector<3>                diffuse_color;
-		mtlShared<retro3d::Texture> diffuse_texture;
-	};
-
-	struct Surface
-	{
-		// a series of CONNECTED faces sharing the SAME material.
-		retro3d::Array<retro3d::FaceIndex> faces;
-		retro3d::AABB                      aabb;
-		uint32_t                           material_index;
-	};
-
-private:
-	std::string                            m_name;
-	retro3d::Array< mmlVector<3> >         m_points;
-	retro3d::Array< mmlVector<2> >         m_tcoords;
-	retro3d::Array< mmlVector<3> >         m_normals;
-	retro3d::Array< Material >             m_materials;
-	retro3d::Array< Surface >              m_surfaces;
-	retro3d::Array< retro3d::FaceIndexVN > m_topography;
-	retro3d::AABB                          m_aabb;
-	mtlShared<retro3d::Texture>            m_lightmap;
-
-	// NOTE: When lightmap is available (i.e. not null):
-	//  1) empty normal array
-	//  2) use the 'n' index to refer to lightmap uvs
-	//  3) store lightmap uvs in texture coordinate array (append last to array)
-};
-
 // LoadOBJ -> Returns a series of ModelObjects depending on number of 'o' in OBJ file.
 
 // Vertex
@@ -119,9 +106,11 @@ void         CenterVerticesByMass(retro3d::Array< mmlVector<3> > &v, const mmlVe
 void         CenterVerticesByArea(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center);
 float        CalculateVertexScale(const retro3d::Array< mmlVector<3> > &v);
 void         ScaleVertices(retro3d::Array< mmlVector<3> > &v, float scale);
+mmlVector<3> CalculateCentroid(const retro3d::Array< mmlVector<3> > &v);
 mmlVector<3> CalculateCenterOfMass(const retro3d::Array< mmlVector<3> > &v);
-mmlVector<3> CalculateCenterOfArea(const retro3d::Array< mmlVector<3> > &v);
+mmlVector<3> CalculateCenterOfVolume(const retro3d::Array< mmlVector<3> > &v);
 mmlVector<3> FindExtremeVertexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &dir);
+int          FindExtremeVertexIndexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &dir);
 bool         CalculatePointInConvexHull(const retro3d::Array< mmlVector<3> > &hull_v, const mmlVector<3> &p);
 void         ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<3> > &out);
 void         ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexV &f, retro3d::Array< mmlVector<3> > &out);
@@ -201,12 +190,28 @@ void         ExtractFaceTCoords(const retro3d::Array< mmlVector<2> > &t, const r
 void         InsertFaceTCoords(retro3d::Array< mmlVector<2> > &t, const retro3d::FaceIndex &f, const retro3d::Array< mmlVector<2> > &in);
 
 // Topography
+bool         PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndex > &convex_hull, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+bool         PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexV > &convex_hull, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+bool         PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexVN > &convex_hull, float FP_EPSILON = std::numeric_limits<float>::epsilon());
 bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexV > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
 bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexVN > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
 bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndex > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
-void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > *hull_verts, retro3d::Array< retro3d::FaceIndex > *hull_faces);
+void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > *hull_verts, retro3d::Array< retro3d::FaceIndexV > *outer_hull_faces);
+void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &hull_verts, retro3d::Array< retro3d::FaceIndexV > &outer_hull_faces);
+void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &hull_verts);
+void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< retro3d::FaceIndexV > &outer_hull_faces);
+void         FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< int32_t > &out_index);
+void         FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &out_vert);
 
-class ModelConstructor
+/*struct ModelExchange
+{
+	retro3d::Array< mmlVector<3> > verts;
+	retro3d::Array< mmlVector<2> > tcoords;
+	retro3d::Array< mmlVector<3> > normals;
+	retro3d::Array< Surface > surfaces;
+};*/
+
+class Geometry
 {
 private:
 	template < typename type_t >
@@ -236,7 +241,7 @@ private:
 private:
 	static uint64_t Hash(int32_t a);
 	static uint64_t Hash(int32_t a, int32_t b);
-	void            StoreClippedFace(ModelConstructor *out, const FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n);
+	void            StoreClippedFace(Geometry *out, const FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n);
 	void            UpdateAABB( void );
 
 public:
@@ -251,7 +256,7 @@ public:
 //	void ExtractMaterial();
 //	void InsertMaterial();
 	void Destroy( void );
-	void Split(const retro3d::Plane &plane, retro3d::ModelConstructor *front, retro3d::ModelConstructor *back);
+	void Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back);
 	bool CalculateConvexity( void ) const;
 	void Debug_PrintMaterials( void ) const;
 };

@@ -12,9 +12,52 @@
 	#include <SDL2/SDL.h>
 #endif
 
-
 using namespace tiny3d;
 using namespace retro3d;
+
+std::string retro3d::GetDirectory(const std::string &path)
+{
+	size_t dir_sep1 = path.find_last_of('\\');
+	size_t dir_sep2 = path.find_last_of('/');
+	size_t dir_sep = mmlMax(dir_sep1, dir_sep2);
+	if (dir_sep == std::string::npos) {
+		dir_sep = mmlMin(dir_sep1, dir_sep2);
+	}
+	return (dir_sep != std::string::npos) ? path.substr(0, dir_sep + 1) : "";
+}
+
+std::string retro3d::GetFileName(const std::string &path)
+{
+	std::string filename = retro3d::GetFileNameWithExtension(path);
+	size_t ext_sep = filename.find_last_of('.');
+	if (ext_sep == 0) {
+		ext_sep = std::string::npos;
+	}
+	size_t rem_len = ext_sep != std::string::npos ? ext_sep : filename.size();
+	return filename.substr(0, rem_len);
+}
+
+std::string retro3d::GetFileNameWithExtension(const std::string &path)
+{
+	size_t dir_sep1 = path.find_last_of('\\');
+	size_t dir_sep2 = path.find_last_of('/');
+	size_t dir_sep = mmlMax(dir_sep1, dir_sep2);
+	if (dir_sep == std::string::npos) {
+		dir_sep = mmlMin(dir_sep1, dir_sep2);
+	}
+	size_t rem_len = path.size() - (dir_sep + 1);
+	return (dir_sep != std::string::npos) ? path.substr(dir_sep + 1, rem_len) : path.substr(0, rem_len);
+}
+
+std::string retro3d::GetFileExtension(const std::string &path)
+{
+	std::string filename = GetFileNameWithExtension(path);
+	size_t ext_sep = filename.find_last_of('.');
+	if (ext_sep == 0) {
+		ext_sep = std::string::npos;
+	}
+	return (ext_sep != std::string::npos) ? filename.substr(ext_sep + 1, filename.size() - (ext_sep + 1)) : "";
+}
 
 void retro3d::CreateDefaultImage(tiny3d::Image &img)
 {
@@ -473,6 +516,92 @@ bool retro3d::LoadOBJ(const std::string &file, retro3d::Array< mmlVector<3> > *v
 	retro3d::Reader reader;
 	reader.ReadFromFile(file);
 	return retro3d::LoadOBJ(reader, v, t, n, m);
+}
+
+bool retro3d::SaveOBJ(const std::string &file, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< mmlVector<2> > *t, const retro3d::Array< mmlVector<3> > *n, const retro3d::Array<retro3d::Material> &m)
+{
+	const std::string path = retro3d::GetDirectory(file);
+	const std::string filename = retro3d::GetFileName(file);
+
+	// Write the OBJ file
+	std::ofstream fout(file.c_str());
+	if (!fout.is_open()) {
+		std::cout << "[SaveOBJ] Could not create/open OBJ file, ";
+		return false;
+	}
+
+	fout << "mtllib " << filename + ".mtl" << std::endl;
+
+	for (int32_t i = 0; i < v.GetSize(); ++i) {
+		fout << "v  " << v[i][0] << " " << v[i][1] << " " << v[i][2] << std::endl;
+	}
+	if (t != nullptr) {
+		fout << std::endl;
+		for (int32_t i = 0; i < t->GetSize(); ++i) {
+			fout << "vt " << (*t)[i][0] << " " << (*t)[i][1] << std::endl;
+		}
+	}
+	if (n != nullptr) {
+		fout << std::endl;
+		for (int32_t i = 0; i < n->GetSize(); ++i) {
+			fout << "vn " << (*n)[i][0] << " " << (*n)[i][1] << " " << (*n)[i][2] << std::endl;
+		}
+	}
+	fout << std::endl;
+
+	for (int32_t i = 0; i < m.GetSize(); ++i) {
+		fout << "usemtl " << m[i].name << std::endl;
+		for (int32_t j = 0; j < m[i].f.GetSize(); ++j) {
+			fout << "f ";
+			for (int32_t k = 0; k < m[i].f[j].GetSize(); ++k) {
+				fout << m[i].f[j][k].v + 1;
+				if ((t != nullptr && m[i].f[j][k].t >= 0) && (n != nullptr && m[i].f[j][k].n >= 0)) {
+					fout << "/" << m[i].f[j][k].t + 1;
+					fout << "/" << m[i].f[j][k].n + 1;
+				} else if (t != nullptr && m[i].f[j][k].t >= 0) {
+					fout << "/" << m[i].f[j][k].t + 1;
+				} else if (n != nullptr && m[i].f[j][k].n >= 0) {
+					fout << "//" << m[i].f[j][k].n + 1;
+				}
+				fout << " ";
+			}
+			fout << std::endl;
+		}
+		fout << std::endl;
+	}
+
+	fout.close();
+
+	// Write the MTL file
+	fout.open(path + filename + ".mtl");
+	if (!fout.is_open()) {
+		std::cout << "[SaveOBJ] Could not create/open MTL file, ";
+		return false;
+	}
+
+	for (int32_t i = 0; i < m.GetSize(); ++i) {
+		fout << "newmtl " << m[i].name << std::endl;
+		fout << "Kd " << m[i].cd[0] << " " << m[i].cd[1] << " " << m[i].cd[2] << std::endl;
+		if (m[i].td.IsNull() == false) {
+			fout << "map_Kd " << m[i].name << "_diffuse.tga" << std::endl;
+		}
+		fout << std::endl;
+	}
+	fout.close();
+
+	// Write TGA files
+	bool tga_write_status = true;
+	for (int32_t i = 0; i < m.GetSize(); ++i) {
+		if (m[i].td.IsNull() == false) {
+			tiny3d::Image img;
+			m[i].td.GetShared()->GetHighestQuality()->ToImage(img);
+			if (retro3d::SaveTGA(path + m[i].name + "_diffuse.tga", img) == false) {
+				tga_write_status = false;
+			}
+		}
+	}
+
+	return tga_write_status;
 }
 
 // http://sdl.beuc.net/sdl.wiki/Pixel_Access

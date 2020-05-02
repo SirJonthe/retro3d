@@ -15,6 +15,11 @@
 namespace retro3d
 {
 
+std::string GetDirectory(const std::string &path);
+std::string GetFileName(const std::string &path);
+std::string GetFileNameWithExtension(const std::string &path);
+std::string GetFileExtension(const std::string &dir);
+
 void CreateDefaultImage(tiny3d::Image &img);
 void CreateDefaultModel(retro3d::Array< mmlVector<3> > *v, retro3d::Array< mmlVector<2> > *t, retro3d::Array< mmlVector<3> > *n, retro3d::Array<retro3d::Material> *m);
 void CreateDefaultSound(retro3d::Sound &sfx);
@@ -47,6 +52,7 @@ bool LoadOBJMeta(retro3d::Reader &reader, retro3d::OBJ_Meta &obj);
 bool LoadOBJMeta(const std::string &file, retro3d::OBJ_Meta &obj);
 bool LoadOBJ(retro3d::Reader &reader, retro3d::Array< mmlVector<3> > *v, retro3d::Array< mmlVector<2> > *t, retro3d::Array< mmlVector<3> > *n, retro3d::Array<retro3d::Material> *m);
 bool LoadOBJ(const std::string &file, retro3d::Array< mmlVector<3> > *v, retro3d::Array< mmlVector<2> > *t, retro3d::Array< mmlVector<3> > *n, retro3d::Array<retro3d::Material> *m);
+bool SaveOBJ(const std::string &file, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< mmlVector<2> > *t, const retro3d::Array< mmlVector<3> > *n, const retro3d::Array<retro3d::Material> &m);
 
 bool LoadBMP(const std::string &file, tiny3d::Image &img, bool improve_gradients = true);
 

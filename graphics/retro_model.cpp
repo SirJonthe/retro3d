@@ -2,8 +2,141 @@
 #include "retro_model.h"
 #include "../serial/retro_import.h"
 #include "../common/retro_assert.h"
+#include "../physics/retro_collider.h"
 
 using namespace retro3d;
+
+void retro3d::Convert(const retro3d::IndexVTN &src, retro3d::IndexV &dst)
+{
+	dst.v = src.v;
+}
+
+void retro3d::Convert(const retro3d::IndexVTN &src, retro3d::IndexVN &dst)
+{
+	dst.v = src.v;
+	dst.n = src.n;
+}
+
+void retro3d::Convert(const retro3d::IndexV &src, retro3d::IndexVTN &dst)
+{
+	dst.v = src.v;
+	dst.t = -1;
+	dst.n = -1;
+}
+
+void retro3d::Convert(const retro3d::IndexV &src, retro3d::IndexVN &dst)
+{
+	dst.v = src.v;
+	dst.n = -1;
+}
+
+void retro3d::Convert(const retro3d::IndexVN &src, retro3d::IndexVTN &dst)
+{
+	dst.v = src.v;
+	dst.t = -1;
+	dst.n = src.n;
+}
+
+void retro3d::Convert(const retro3d::IndexVN &src, retro3d::IndexV &dst)
+{
+	dst.v = src.v;
+}
+
+void retro3d::Convert(const retro3d::FaceIndex &src, retro3d::FaceIndexV &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::FaceIndex &src, retro3d::FaceIndexVN &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::FaceIndexV &src, retro3d::FaceIndex &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::FaceIndexV &src, retro3d::FaceIndexVN &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::FaceIndexVN &src, retro3d::FaceIndex &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::FaceIndexVN &src, retro3d::FaceIndexV &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::Array< retro3d::FaceIndex > &src, retro3d::Array< retro3d::FaceIndexV > &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::Array< retro3d::FaceIndex > &src, retro3d::Array< retro3d::FaceIndexVN > &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::Array< retro3d::FaceIndexV > &src, retro3d::Array< retro3d::FaceIndex > &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::Array< retro3d::FaceIndexV > &src, retro3d::Array< retro3d::FaceIndexVN > &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::Array< retro3d::FaceIndexVN > &src, retro3d::Array< retro3d::FaceIndex > &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
+
+void retro3d::Convert(const retro3d::Array< retro3d::FaceIndexVN > &src, retro3d::Array< retro3d::FaceIndexV > &dst)
+{
+	dst.Create(src.GetSize());
+	for (int32_t i = 0; i < dst.GetSize(); ++i) {
+		Convert(src[i], dst[i]);
+	}
+}
 
 void retro3d::Model::CenterModel( void )
 {
@@ -334,7 +467,7 @@ void retro3d::CenterVerticesByMass(retro3d::Array< mmlVector<3> > &v, const mmlV
 
 void retro3d::CenterVerticesByArea(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center)
 {
-	retro3d::TranslateVertices(v, retro3d::VectorFromAToB(retro3d::CalculateCenterOfArea(v), new_center));
+	retro3d::TranslateVertices(v, retro3d::VectorFromAToB(retro3d::CalculateCenterOfVolume(v), new_center));
 }
 
 float retro3d::CalculateVertexScale(const retro3d::Array< mmlVector<3> > &v)
@@ -349,7 +482,7 @@ void retro3d::ScaleVertices(retro3d::Array< mmlVector<3> > &v, float scale)
 	}
 }
 
-mmlVector<3> retro3d::CalculateCenterOfMass(const retro3d::Array< mmlVector<3> > &v)
+mmlVector<3> retro3d::CalculateCentroid(const retro3d::Array< mmlVector<3> > &v)
 {
 	mmlVector<3> c = mmlVector<3>::Fill(0.0f);
 	for (int i = 0; i < v.GetSize(); ++i) {
@@ -359,18 +492,23 @@ mmlVector<3> retro3d::CalculateCenterOfMass(const retro3d::Array< mmlVector<3> >
 	return c;
 }
 
-mmlVector<3> retro3d::CalculateCenterOfArea(const retro3d::Array< mmlVector<3> > &v)
+mmlVector<3> retro3d::CalculateCenterOfMass(const retro3d::Array< mmlVector<3> > &v)
+{
+	return CalculateCentroid(v);
+}
+
+mmlVector<3> retro3d::CalculateCenterOfVolume(const retro3d::Array< mmlVector<3> > &v)
 {
 	return retro3d::AABB(v).GetCenter();
 }
 
-mmlVector<3> retro3d::FindExtremeVertexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &dir)
+mmlVector<3> retro3d::FindExtremeVertexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &search_dir)
 {
 	mmlVector<3> max_v = v[0];
-	float max_dot = mmlDot(max_v, dir);
+	float max_dot = mmlDot(max_v, search_dir);
 
 	for (int i = 1; i < v.GetSize(); ++i) {
-		const float dot = mmlDot(v[i], dir);
+		const float dot = mmlDot(v[i], search_dir);
 		if (dot > max_dot) {
 			max_dot = dot;
 			max_v = v[i];
@@ -378,6 +516,24 @@ mmlVector<3> retro3d::FindExtremeVertexAlongDirection(const retro3d::Array< mmlV
 	}
 
 	return max_v;
+}
+
+int retro3d::FindExtremeVertexIndexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &search_dir)
+{
+	mmlVector<3> max_v = v[0];
+	int max_i = 0;
+	float max_dot = mmlDot(max_v, search_dir);
+
+	for (int i = 1; i < v.GetSize(); ++i) {
+		const float dot = mmlDot(v[i], search_dir);
+		if (dot > max_dot) {
+			max_dot = dot;
+			max_v = v[i];
+			max_i = i;
+		}
+	}
+
+	return max_i;
 }
 
 bool retro3d::CalculatePointInConvexHull(const retro3d::Array< mmlVector<3> > &hull_v, const mmlVector<3> &p)
@@ -695,6 +851,37 @@ void retro3d::InsertFaceTCoords(retro3d::Array< mmlVector<2> > &t, const retro3d
 namespace impl
 {
 	template < typename index_t >
+	bool PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< index_t > &convex_hull, float FP_EPSILON)
+	{
+		retro3d::Plane plane;
+		for (int32_t f = 0; f < convex_hull.GetSize(); ++f) {
+			if (convex_hull[f].GetSize() >= 3) {
+				plane = retro3d::Plane(v[convex_hull[f][0].v], v[convex_hull[f][1].v], v[convex_hull[f][2].v]);
+				if (plane.DetermineSide(point, FP_EPSILON) > 0) { return false; }
+			}
+		}
+		return true;
+	}
+}
+
+bool retro3d::PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndex > &convex_hull, float FP_EPSILON)
+{
+	return impl::PointInsideConvexHull(point, v, convex_hull, FP_EPSILON);
+}
+
+bool retro3d::PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexV > &convex_hull, float FP_EPSILON)
+{
+	return impl::PointInsideConvexHull(point, v, convex_hull, FP_EPSILON);
+}
+
+bool retro3d::PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexVN > &convex_hull, float FP_EPSILON)
+{
+	return impl::PointInsideConvexHull(point, v, convex_hull, FP_EPSILON);
+}
+
+namespace impl
+{
+	template < typename index_t >
 	bool IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< index_t > &f, float FP_EPSILON)
 	{
 		// NOTE: Assertion = For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
@@ -729,20 +916,332 @@ bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::A
 	return impl::IsConvex(v, f, FP_EPSILON);
 }
 
-uint64_t retro3d::ModelConstructor::Hash(int32_t a)
+void retro3d::CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > *hull_verts, retro3d::Array< retro3d::FaceIndexV > *outer_hull_faces)
+{
+	// https://gist.github.com/msg555/4963794
+
+	if ((hull_verts == nullptr && outer_hull_faces == nullptr) || vert_cloud.GetSize() < 4) { return; }
+
+	// Find the center of the volume of the shape
+	const retro3d::AABB aabb = retro3d::AABB(vert_cloud);
+	const mmlVector<3> center = retro3d::CalculateCentroid(vert_cloud);
+	const mmlVector<3> half_extents = aabb.GetHalfExtents();
+	int32_t degeneracy = 0;
+	for (int32_t i = 0; i < 3; ++i) {
+		if (mmlIsApproxEqual(half_extents[i], 0.0f) == true) {
+			++degeneracy;
+		}
+	}
+	if (degeneracy > 1) { return; }
+	const retro3d::Array< mmlVector<3> > *search_verts = &vert_cloud;
+
+	// Generate a map of the convex points using the support vector from center to each vertex.
+	std::unordered_map< int32_t, mmlVector<3> > convex_points;
+	convex_points.reserve(size_t(vert_cloud.GetSize()));
+	for (int32_t i = 0; i < vert_cloud.GetSize(); ++i) {
+		const int32_t extreme_index = retro3d::FindExtremeVertexIndexAlongDirection(vert_cloud, retro3d::NormalFromAToB(center, vert_cloud[i]));
+		convex_points[extreme_index] = vert_cloud[extreme_index];
+	}
+
+	// Serialize map to linear vertex.
+	if (hull_verts != nullptr) {
+		hull_verts->SetCapacity(int(convex_points.size()));
+		for (auto i = convex_points.begin(); i != convex_points.end(); ++i) {
+			hull_verts->Add(i->second);
+		}
+
+		// Remap the vertex output to the map.
+		if (outer_hull_faces != nullptr) {
+			search_verts = hull_verts;
+			convex_points.clear();
+			convex_points.reserve(size_t(hull_verts->GetSize()));
+			for (int32_t i = 0; i < hull_verts->GetSize(); ++i) {
+				convex_points[i] = (*hull_verts)[i];
+			}
+		}
+	}
+
+	// Triangulate mesh.
+	if (outer_hull_faces != nullptr) {
+		// Setup
+		// 1) Add 4 points of the convex points to a list (aim to pick points along the axis extremes)
+		// 2) Use selected points to compute 4 faces (tetrahedron) in the output hull.
+		// 3) Remove selected points from convex points
+		// Loop through remaining unconnected vertices
+		// 4) Create three new faces by adding a vertex from convex points to output hull.
+		// 5) Remove selected point from the convex points list.
+		// Loop through current hull faces
+		// 5) Calculate current face plane
+		// 6) Cast ray from selected point using negative face plane normal as direction
+		// 7) If ray hits current face, then construct 3 new faces that split the original one and all share the new vertex
+		// 8) Early exit face loop
+
+		outer_hull_faces->SetCapacity(int(convex_points.size()) - 2); // NOTE: What capacity is appropriate here?
+
+		// Store the extreme points for each axis.
+		std::unordered_map< int32_t, mmlVector<3> >::iterator n[6];
+		n[0] = convex_points.begin();
+		for (int32_t i = 1; i < 6; ++i) {
+			n[i] = n[0];
+		}
+
+		for (auto i = convex_points.begin(); i != convex_points.end(); ++i) {
+			for (int32_t axis = 0; axis < 3; ++axis) {
+				if (i->second[axis] < n[axis*2]->second[axis])   { n[axis*2]   = i; }
+				if (i->second[axis] > n[axis*2+1]->second[axis]) { n[axis*2+1] = i; }
+			}
+		}
+
+		// Pick tetrahedron vertices that are not degenerate (i.e. 2D or 1D).
+		retro3d::AABB tetra_aabb;
+		retro3d::Array< mmlVector<3> > tetra_verts;
+		retro3d::Array< int32_t > tetra_index;
+		tetra_verts.Resize(4);
+		tetra_index.Resize(4);
+		for (int32_t a = 0; a < 3; ++a) {
+			for (int32_t b = a + 1; b < 4; ++b) {
+				for (int32_t c = b + 1; c < 5; ++c) {
+					for (int32_t d = c + 1; d < 6; ++d) {
+						tetra_verts[0] = n[a]->second;
+						tetra_verts[1] = n[b]->second;
+						tetra_verts[2] = n[c]->second;
+						tetra_verts[3] = n[d]->second;
+						retro3d::AABB candidate_aabb = retro3d::AABB(tetra_verts);
+						if (candidate_aabb.GetVolume() > tetra_aabb.GetVolume()) {
+							tetra_aabb = candidate_aabb;
+							tetra_index[0] = n[a]->first;
+							tetra_index[1] = n[b]->first;
+							tetra_index[2] = n[c]->first;
+							tetra_index[3] = n[d]->first;
+						}
+					}
+				}
+			}
+		}
+
+		// Remove vertices already in the tetrahedron.
+		for (int32_t i = 0; i < 4; ++i) {
+			convex_points.erase(tetra_index[i]);
+		}
+
+		// Add tetrahedron faces to output hull (make sure faces point outwards)
+		int32_t last = 0;
+		outer_hull_faces->Add();
+		last = outer_hull_faces->GetSize() - 1;
+		(*outer_hull_faces)[last].Create(3);
+		(*outer_hull_faces)[last][0].v = tetra_index[0];
+		(*outer_hull_faces)[last][1].v = tetra_index[1];
+		(*outer_hull_faces)[last][2].v = tetra_index[2];
+		if (mmlDot(mmlSurfaceNormal(tetra_verts[0], tetra_verts[1], tetra_verts[2]), retro3d::NormalFromAToB(center, (tetra_verts[0] + tetra_verts[1] + tetra_verts[2]) / 3.0f)) < 0.0f) {
+			mmlSwap((*outer_hull_faces)[last][0].v, (*outer_hull_faces)[last][2].v);
+		}
+
+		outer_hull_faces->Add();
+		last = outer_hull_faces->GetSize() - 1;
+		(*outer_hull_faces)[last].Create(3);
+		(*outer_hull_faces)[last][0].v = tetra_index[0];
+		(*outer_hull_faces)[last][1].v = tetra_index[2];
+		(*outer_hull_faces)[last][2].v = tetra_index[3];
+		if (mmlDot(mmlSurfaceNormal(tetra_verts[0], tetra_verts[2], tetra_verts[3]), retro3d::NormalFromAToB(center, (tetra_verts[0] + tetra_verts[2] + tetra_verts[3]) / 3.0f)) > 0.0f) { // Why does this need to be flipped???
+			mmlSwap((*outer_hull_faces)[last][0].v, (*outer_hull_faces)[last][2].v);
+		}
+
+		outer_hull_faces->Add();
+		last = outer_hull_faces->GetSize() - 1;
+		(*outer_hull_faces)[last].Create(3);
+		(*outer_hull_faces)[last][0].v = tetra_index[0];
+		(*outer_hull_faces)[last][1].v = tetra_index[1];
+		(*outer_hull_faces)[last][2].v = tetra_index[3];
+		if (mmlDot(mmlSurfaceNormal(tetra_verts[0], tetra_verts[1], tetra_verts[3]), retro3d::NormalFromAToB(center, (tetra_verts[0] + tetra_verts[1] + tetra_verts[3]) / 3.0f)) < 0.0f) {
+			mmlSwap((*outer_hull_faces)[last][0].v, (*outer_hull_faces)[last][2].v);
+		}
+
+		outer_hull_faces->Add();
+		last = outer_hull_faces->GetSize() - 1;
+		(*outer_hull_faces)[last].Create(3);
+		(*outer_hull_faces)[last][0].v = tetra_index[1];
+		(*outer_hull_faces)[last][1].v = tetra_index[2];
+		(*outer_hull_faces)[last][2].v = tetra_index[3];
+		if (mmlDot(mmlSurfaceNormal(tetra_verts[1], tetra_verts[2], tetra_verts[3]), retro3d::NormalFromAToB(center, (tetra_verts[1] + tetra_verts[2] + tetra_verts[3]) / 3.0f)) < 0.0f) {
+			mmlSwap((*outer_hull_faces)[last][0].v, (*outer_hull_faces)[last][2].v);
+		}
+
+		bool center_in_tetra = retro3d::PointInsideConvexHull(center, *search_verts, *outer_hull_faces);
+		std::cout << "center in tetrahedron=" << (center_in_tetra ? "yes" : "no") << std::endl;
+
+		// Construct hull by finding the most appropriate face to reconstruct to include the point on the current state of the hull.
+		if (mmlIsApproxEqual(tetra_aabb.GetVolume(), 0.0f) == false) {
+
+			std::cout << convex_points.size() << std::endl;
+			int32_t num_points = 0;
+
+			while (convex_points.empty() == false) { // remaining verts
+				auto vert = convex_points.begin();
+				for (int32_t i = 0; i < outer_hull_faces->GetSize(); ++i) { // current faces
+
+					const int32_t      ai = (*outer_hull_faces)[i][0].v;
+					const int32_t      bi = (*outer_hull_faces)[i][1].v;
+					const int32_t      ci = (*outer_hull_faces)[i][2].v;
+					const mmlVector<3> a  = (*search_verts)[ai];
+					const mmlVector<3> b  = (*search_verts)[bi];
+					const mmlVector<3> c  = (*search_verts)[ci];
+
+					if (mglCollision::Ray_Tri(vert->second, retro3d::NormalFromAToB(vert->second, center), a, b, c) == true) {
+
+						(*outer_hull_faces)[i][0].v = ai;
+						(*outer_hull_faces)[i][1].v = bi;
+						(*outer_hull_faces)[i][2].v = vert->first;
+
+						outer_hull_faces->Add();
+						last = outer_hull_faces->GetSize() - 1;
+						(*outer_hull_faces)[last].Create(3);
+						(*outer_hull_faces)[last][0].v = bi;
+						(*outer_hull_faces)[last][1].v = ci;
+						(*outer_hull_faces)[last][2].v = vert->first;
+
+						outer_hull_faces->Add();
+						last = outer_hull_faces->GetSize() - 1;
+						(*outer_hull_faces)[last].Create(3);
+						(*outer_hull_faces)[last][0].v = ci;
+						(*outer_hull_faces)[last][1].v = ai;
+						(*outer_hull_faces)[last][2].v = vert->first;
+
+						++num_points;
+
+						break;
+					}
+				}
+
+				convex_points.erase(vert);
+			}
+
+			std::cout << num_points << std::endl;
+
+//			std::unordered_map< int32_t, mmlVector<3> > orphan_verts;
+//			size_t start_orphans = 0;
+//
+//			do {
+//				orphan_verts.reserve(convex_points.size());
+//				while (convex_points.empty() == false) { // remaining verts
+//					auto vert = convex_points.begin();
+//					bool is_orphan = true;
+//					for (int32_t i = 0; i < outer_hull_faces->GetSize(); ++i) { // current faces
+//
+//						const int32_t      ai = (*outer_hull_faces)[i][0].v;
+//						const int32_t      bi = (*outer_hull_faces)[i][1].v;
+//						const int32_t      ci = (*outer_hull_faces)[i][2].v;
+//						const mmlVector<3> a  = (*search_verts)[ai];
+//						const mmlVector<3> b  = (*search_verts)[bi];
+//						const mmlVector<3> c  = (*search_verts)[ci];
+//
+//						const mmlVector<3> ray_direction = mmlSurfaceNormal(c, b, a);
+//						if (mglCollision::Ray_Tri(vert->second, ray_direction, a, b, c) == true) {
+//
+//							(*outer_hull_faces)[i][0].v = ai;
+//							(*outer_hull_faces)[i][1].v = bi;
+//							(*outer_hull_faces)[i][2].v = vert->first;
+//
+//							outer_hull_faces->Add();
+//							last = outer_hull_faces->GetSize() - 1;
+//							(*outer_hull_faces)[last].Create(3);
+//							(*outer_hull_faces)[last][0].v = bi;
+//							(*outer_hull_faces)[last][1].v = ci;
+//							(*outer_hull_faces)[last][2].v = vert->first;
+//
+//							outer_hull_faces->Add();
+//							last = outer_hull_faces->GetSize() - 1;
+//							(*outer_hull_faces)[last].Create(3);
+//							(*outer_hull_faces)[last][0].v = ci;
+//							(*outer_hull_faces)[last][1].v = ai;
+//							(*outer_hull_faces)[last][2].v = vert->first;
+//
+//							is_orphan = false;
+//
+//							break;
+//						}
+//					}
+//					if (is_orphan == true) {
+//						orphan_verts[vert->first] = vert->second;
+//					}
+//
+//					convex_points.erase(vert);
+//				}
+//
+//				if (start_orphans != orphan_verts.size()) {
+//					start_orphans = orphan_verts.size();
+//					convex_points = orphan_verts;
+//					orphan_verts.clear();
+//				}
+//
+//			} while (convex_points.empty() == false);
+//
+//			std::cout << "There " << (start_orphans == 1 ? "was " : "were ") << start_orphans << " unresolved orphan " << (start_orphans == 1 ? "vertex" : "vertices") << std::endl;
+
+		} else {
+			// TODO:
+			// Shape is 2D (for instance billboard)
+			// Special case algorithm (each edge must be converted to a 3D plane.
+		}
+	}
+}
+
+void retro3d::CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &hull_verts, retro3d::Array< retro3d::FaceIndexV > &hull_faces)
+{
+	retro3d::CreateConvexHull(vert_cloud, &hull_verts, &hull_faces);
+}
+
+void retro3d::CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &hull_verts)
+{
+	retro3d::CreateConvexHull(vert_cloud, &hull_verts, nullptr);
+}
+
+void retro3d::CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< retro3d::FaceIndexV > &hull_faces)
+{
+	retro3d::CreateConvexHull(vert_cloud, nullptr, &hull_faces);
+}
+
+void retro3d::FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< int32_t > &out_index)
+{
+	const mmlVector<3> center = retro3d::CalculateCentroid(vert_cloud);
+	std::unordered_map< int32_t, int32_t > convex_points;
+	convex_points.reserve(size_t(vert_cloud.GetSize()));
+	for (int32_t i = 0; i < vert_cloud.GetSize(); ++i) {
+		const int32_t extreme_index = retro3d::FindExtremeVertexIndexAlongDirection(vert_cloud, retro3d::NormalFromAToB(center, vert_cloud[i]));
+		convex_points[extreme_index] = extreme_index;
+	}
+
+	out_index.SetCapacity(vert_cloud.GetSize() - convex_points.size());
+	for (int32_t i = 0; i < vert_cloud.GetSize(); ++i) {
+		if (convex_points.find(i) == convex_points.end()) {
+			out_index.Add(i);
+		}
+	}
+}
+
+void retro3d::FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &out_vert)
+{
+	retro3d::Array< int32_t > out_index;
+	retro3d::FindConcavePoints(vert_cloud, out_index);
+	out_vert.Resize(out_index.GetSize());
+	for (int32_t i = 0; i < out_vert.GetSize(); ++i) {
+		out_vert[i] = vert_cloud[out_index[i]];
+	}
+}
+
+uint64_t retro3d::Geometry::Hash(int32_t a)
 {
 	const uint32_t ua = a >= 0 ? *reinterpret_cast<uint32_t*>(&a) : NO_INDEX;
 	return uint64_t(ua);
 }
 
-uint64_t retro3d::ModelConstructor::Hash(int32_t a, int32_t b)
+uint64_t retro3d::Geometry::Hash(int32_t a, int32_t b)
 {
 	// NOTE: A unique hash of two indices where h(a,b) = h(b,a)
 	if (a < 0 || b < 0) { return uint64_t(NO_INDEX); }
 	return (Hash(mmlMin(a, b)) << 32) | Hash(mmlMax(a, b));
 }
 
-void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out, const retro3d::ModelConstructor::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
+void retro3d::Geometry::StoreClippedFace(retro3d::Geometry *out, const retro3d::Geometry::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
 {
 	FaceMap *out_face = &out->m[current_material_index].f[uint64_t(out->m[current_material_index].f.size())]; // NOTE: Adding an element last to the table.
 	out_face->i.Create(clipped_v.GetSize());
@@ -808,7 +1307,7 @@ void retro3d::ModelConstructor::StoreClippedFace(retro3d::ModelConstructor *out,
 	}
 }
 
-void retro3d::ModelConstructor::UpdateAABB( void )
+void retro3d::Geometry::UpdateAABB( void )
 {
 	if (v.size() > 0) {
 		mmlVector<3> min, max;
@@ -823,7 +1322,7 @@ void retro3d::ModelConstructor::UpdateAABB( void )
 	}
 }
 
-void retro3d::ModelConstructor::ToModel(retro3d::Model &out)
+void retro3d::Geometry::ToModel(retro3d::Model &out)
 {
 	int32_t i;
 	Map<int32_t> v_table;
@@ -835,7 +1334,7 @@ void retro3d::ModelConstructor::ToModel(retro3d::Model &out)
 	out.aabb     = aabb;
 
 	v_table.reserve(v.size());
-	out.v.Create(int(v.size()));
+	out.v.Create(int32_t(v.size()));
 	i = 0;
 	v_table[NO_INDEX] = -1;
 	for (auto it = v.begin(); it != v.end(); ++it) {
@@ -896,7 +1395,7 @@ void retro3d::ModelConstructor::ToModel(retro3d::Model &out)
 			}
 			if (is_clipped) {
 				std::cout << "-" << fa->GetSize() << std::endl;
-				for (int i = 0; i < fa->GetSize(); ++i) {
+				for (int32_t i = 0; i < fa->GetSize(); ++i) {
 					const retro3d::IndexVTN *ia = &(*fa)[i];
 					const IndexMap          *ib = &fb->i[i];
 					std::cout << "  (" << ib->v << ") " << v[ib->v][0] << "," << v[ib->v][1] << "," << v[ib->v][2] << " -> " << "(" << ia->v << ")" << out.v[ia->v][0] << "," << out.v[ia->v][1] << "," << out.v[ia->v][2] << std::endl;
@@ -906,7 +1405,7 @@ void retro3d::ModelConstructor::ToModel(retro3d::Model &out)
 	}
 }
 
-void retro3d::ModelConstructor::FromModel(const retro3d::Model &in)
+void retro3d::Geometry::FromModel(const retro3d::Model &in)
 {
 	// NOTE, TODO, BUG: This code does not handle negative indices. Unsure how this will affect converting the mapped model back to linear format.
 
@@ -950,7 +1449,7 @@ void retro3d::ModelConstructor::FromModel(const retro3d::Model &in)
 	}
 }
 
-void retro3d::ModelConstructor::MergeApproximateVertices(float EPSILON)
+void retro3d::Geometry::MergeApproximateVertices(float EPSILON)
 {
 	// NOTE: Remove all similar vertices in the model by merging the faces together.
 	// BUG:  Does not work (a invalidated when b is erased?).
@@ -1009,7 +1508,7 @@ void retro3d::ModelConstructor::MergeApproximateVertices(float EPSILON)
 	}
 }
 
-void retro3d::ModelConstructor::DefragAttributes( void )
+void retro3d::Geometry::DefragAttributes( void )
 {
 	Map< mmlVector<3> > packed_v;
 	Map< mmlVector<2> > packed_t;
@@ -1041,7 +1540,7 @@ void retro3d::ModelConstructor::DefragAttributes( void )
 #endif
 }
 
-void retro3d::ModelConstructor::Destroy( void )
+void retro3d::Geometry::Destroy( void )
 {
 	name = "";
 	v.clear();
@@ -1052,7 +1551,7 @@ void retro3d::ModelConstructor::Destroy( void )
 	aabb = retro3d::AABB();
 }
 
-void retro3d::ModelConstructor::Split(const retro3d::Plane &plane, retro3d::ModelConstructor *front, retro3d::ModelConstructor *back)
+void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back)
 {
 	if (front == nullptr && back == nullptr) { return; }
 
@@ -1172,12 +1671,12 @@ void retro3d::ModelConstructor::Split(const retro3d::Plane &plane, retro3d::Mode
 	}
 }
 
-bool retro3d::ModelConstructor::CalculateConvexity( void ) const
+bool retro3d::Geometry::CalculateConvexity( void ) const
 {
 	return false;
 }
 
-void retro3d::ModelConstructor::Debug_PrintMaterials( void ) const
+void retro3d::Geometry::Debug_PrintMaterials( void ) const
 {
 	for (int32_t i = 0; i < m.GetSize(); ++i) {
 		std::cout << m[i].name << std::endl;
