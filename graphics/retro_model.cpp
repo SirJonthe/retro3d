@@ -159,7 +159,7 @@ void retro3d::Model::ScaleModelToUnitSize( void )
 }
 
 void retro3d::Model::ReverseModel( void )
-{	
+{
 	for (int32_t i = 0; i < m.GetSize(); ++i) {
 		InvertFaces(m[i].f);
 	}
@@ -465,7 +465,7 @@ void retro3d::CenterVerticesByMass(retro3d::Array< mmlVector<3> > &v, const mmlV
 	retro3d::TranslateVertices(v, retro3d::VectorFromAToB(retro3d::CalculateCenterOfMass(v), new_center));
 }
 
-void retro3d::CenterVerticesByArea(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center)
+void retro3d::CenterVerticesByVolume(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center)
 {
 	retro3d::TranslateVertices(v, retro3d::VectorFromAToB(retro3d::CalculateCenterOfVolume(v), new_center));
 }
@@ -882,18 +882,22 @@ bool retro3d::PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Ar
 namespace impl
 {
 	template < typename index_t >
-	bool IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< index_t > &f, float FP_EPSILON)
+	bool IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< index_t > &f, bool invertedGeometry, float FP_EPSILON)
 	{
 		// NOTE: Assertion = For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
 		for (int32_t f0 = 0; f0 < f.GetSize() - 1; ++f0) {
 			const index_t *face0 = &f[f0];
 			const retro3d::Plane plane(v[(*face0)[0].v], v[(*face0)[1].v], v[(*face0)[2].v]);
-			for (int32_t f1 = 1; f1 < f.GetSize(); ++f1) {
+			for (int32_t f1 = f0 + 1; f1 < f.GetSize(); ++f1) {
 				const index_t *face1 = &f[f1];
 				const int32_t vert_count = face1->GetSize();
 				for (int32_t v0 = 0; v0 < vert_count; ++v0) {
 					const mmlVector<3> vcoord = v[(*face1)[v0].v];
-					if (plane.DetermineSide(vcoord, FP_EPSILON) > 0) { return false; } // NOTE: Current vertex is in front of current plane, i.e. not convex.
+					if (invertedGeometry == false) {
+						if (plane.DetermineSide(vcoord, FP_EPSILON) > 0) { return false; } // NOTE: Current vertex is in front of current plane, i.e. not convex.
+					} else {
+						if (plane.DetermineSide(vcoord, FP_EPSILON) < 0) { return false; } // NOTE: Current vertex is behind current plane, i.e. not convex.
+					}
 				}
 			}
 		}
@@ -903,17 +907,17 @@ namespace impl
 
 bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexV > &f, float FP_EPSILON)
 {
-	return impl::IsConvex(v, f, FP_EPSILON);
+	return impl::IsConvex(v, f, false, FP_EPSILON);
 }
 
 bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexVN > &f, float FP_EPSILON)
 {
-	return impl::IsConvex(v, f, FP_EPSILON);
+	return impl::IsConvex(v, f, false, FP_EPSILON);
 }
 
 bool retro3d::IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndex > &f, float FP_EPSILON)
 {
-	return impl::IsConvex(v, f, FP_EPSILON);
+	return impl::IsConvex(v, f, false, FP_EPSILON);
 }
 
 void retro3d::CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > *hull_verts, retro3d::Array< retro3d::FaceIndexV > *outer_hull_faces)
@@ -938,7 +942,7 @@ void retro3d::CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud,
 	// Generate a map of the convex points using the support vector from center to each vertex.
 	std::unordered_map< int32_t, mmlVector<3> > convex_points;
 	convex_points.reserve(size_t(vert_cloud.GetSize()));
-	for (int32_t i = 0; i < vert_cloud.GetSize(); ++i) {
+	for (int i = 0; i < vert_cloud.GetSize(); ++i) {
 		const int32_t extreme_index = retro3d::FindExtremeVertexIndexAlongDirection(vert_cloud, retro3d::NormalFromAToB(center, vert_cloud[i]));
 		convex_points[extreme_index] = vert_cloud[extreme_index];
 	}
@@ -1211,7 +1215,7 @@ void retro3d::FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud
 	}
 
 	out_index.SetCapacity(vert_cloud.GetSize() - convex_points.size());
-	for (int32_t i = 0; i < vert_cloud.GetSize(); ++i) {
+	for (int i = 0; i < vert_cloud.GetSize(); ++i) {
 		if (convex_points.find(i) == convex_points.end()) {
 			out_index.Add(i);
 		}
@@ -1223,7 +1227,7 @@ void retro3d::FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud
 	retro3d::Array< int32_t > out_index;
 	retro3d::FindConcavePoints(vert_cloud, out_index);
 	out_vert.Resize(out_index.GetSize());
-	for (int32_t i = 0; i < out_vert.GetSize(); ++i) {
+	for (int i = 0; i < out_vert.GetSize(); ++i) {
 		out_vert[i] = vert_cloud[out_index[i]];
 	}
 }
@@ -1334,7 +1338,7 @@ void retro3d::Geometry::ToModel(retro3d::Model &out)
 	out.aabb     = aabb;
 
 	v_table.reserve(v.size());
-	out.v.Create(int32_t(v.size()));
+	out.v.Create(int(v.size()));
 	i = 0;
 	v_table[NO_INDEX] = -1;
 	for (auto it = v.begin(); it != v.end(); ++it) {
@@ -1395,7 +1399,7 @@ void retro3d::Geometry::ToModel(retro3d::Model &out)
 			}
 			if (is_clipped) {
 				std::cout << "-" << fa->GetSize() << std::endl;
-				for (int32_t i = 0; i < fa->GetSize(); ++i) {
+				for (int i = 0; i < fa->GetSize(); ++i) {
 					const retro3d::IndexVTN *ia = &(*fa)[i];
 					const IndexMap          *ib = &fb->i[i];
 					std::cout << "  (" << ib->v << ") " << v[ib->v][0] << "," << v[ib->v][1] << "," << v[ib->v][2] << " -> " << "(" << ia->v << ")" << out.v[ia->v][0] << "," << out.v[ia->v][1] << "," << out.v[ia->v][2] << std::endl;
@@ -1449,7 +1453,7 @@ void retro3d::Geometry::FromModel(const retro3d::Model &in)
 	}
 }
 
-void retro3d::Geometry::MergeApproximateVertices(float EPSILON)
+void retro3d::Geometry::MergeApproximateVertices(const float DIST)
 {
 	// NOTE: Remove all similar vertices in the model by merging the faces together.
 	// BUG:  Does not work (a invalidated when b is erased?).
@@ -1461,7 +1465,7 @@ void retro3d::Geometry::MergeApproximateVertices(float EPSILON)
 		for (auto b = ++hack_offset; b != v.end(); ++b) {
 			int j = 0;
 			for (; j < 3; ++j) {
-				if (mmlIsApproxEqual(a->second[j], b->second[j], EPSILON) == false) {
+				if (mmlIsApproxEqual(a->second[j], b->second[j], DIST) == false) {
 					break;
 				}
 			}
@@ -1671,9 +1675,25 @@ void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *fr
 	}
 }
 
-bool retro3d::Geometry::CalculateConvexity( void ) const
+bool retro3d::Geometry::CalculateConvexity(const float FP_EPSILON) const
 {
-	return false;
+	// NOTE: Assertion = For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
+	size_t counter = 0;
+	for (auto f0 = f.begin(); counter++ < f.size() - 1; ++f0) {
+		const FaceMap *face0 = &f0->second;
+		const retro3d::Plane plane(v.at(face0->i[0].v), v.at(face0->i[1].v), v.at(face0->i[2].v));
+		auto f1 = f0;
+		++f1;
+		for (; f1 != f.end(); ++f1) {
+			const FaceMap *face1 = &f1->second;
+			const int32_t vert_count = face1->i.GetSize();
+			for (int32_t v0 = 0; v0 < vert_count; ++v0) {
+				const mmlVector<3> vcoord = v.at(face1->i[v0].v);
+				if (plane.DetermineSide(vcoord, FP_EPSILON) > 0) { return false; } // NOTE: Current vertex is in front of current plane, i.e. not convex.
+			}
+		}
+	}
+	return true; // NOTE: Passed all tests, i.e. convex.
 }
 
 void retro3d::Geometry::Debug_PrintMaterials( void ) const
@@ -2058,6 +2078,57 @@ void retro3d::DisplayModel::Split(retro3d::DisplayModel::ModelData &model_data, 
 	} else {
 		delete model_data.back;
 		model_data.back = nullptr;
+	}
+}
+
+void retro3d::DisplayModel::ChunkySplit(retro3d::DisplayModel::ModelData &model_data, retro3d::DisplayModel::ModelData &root, retro3d::Array< mmlVector<3> > &concave_points)
+{
+	if (concave_points.GetSize() >= 3) {
+
+		// Pick any splitting plane.
+		model_data.splitting_plane = retro3d::Plane(concave_points[0], concave_points[1], concave_points[2]);
+
+		// Create two new arrays of concave points lying on each side of the splitting plane (omit points on the plane).
+		int concave_front_count = 0;
+		int concave_back_count = 0;
+		for (int i = 0; i < concave_points.GetSize(); ++i) {
+			switch (model_data.splitting_plane.DetermineSide(concave_points[i])) {
+			case 1:
+				++concave_front_count;
+				break;
+			case -1:
+				++concave_back_count;
+				break;
+			default: break;
+			}
+		}
+		retro3d::Array< mmlVector<3> > concave_front, concave_back;
+		concave_front.SetCapacity(concave_front_count);
+		concave_back.SetCapacity(concave_back_count);
+		for (int i = 0; i < concave_points.GetSize(); ++i) {
+			switch (model_data.splitting_plane.DetermineSide(concave_points[i])) {
+			case 1:
+				concave_front.Add(concave_points[i]);
+				break;
+			case -1:
+				concave_back.Add(concave_points[i]);
+				break;
+			default: break;
+			}
+		}
+
+		concave_points.Free();
+
+		model_data.front = new ModelData;
+		model_data.back = new ModelData;
+		ChunkySplit(*model_data.front, root, concave_front);
+		ChunkySplit(*model_data.back, root, concave_back);
+
+	} else if (concave_points.GetSize() > 0) {
+		// pick the 1 or 2 points left inside the shape and group together with another (remaining vertex) that splits the volume roughly in two equally sized halves
+	} else {
+		// write to model_data.front
+		// write to model_data.back
 	}
 }
 

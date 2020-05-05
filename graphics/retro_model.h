@@ -103,7 +103,7 @@ void         TransformVertices(retro3d::Array< mmlVector<3> > &v, const retro3d:
 void         TranslateVertices(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &t);
 void         TranslateVertices(retro3d::Array< mmlVector<3> > &v, int32_t axis, float t);
 void         CenterVerticesByMass(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center);
-void         CenterVerticesByArea(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center);
+void         CenterVerticesByVolume(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center);
 float        CalculateVertexScale(const retro3d::Array< mmlVector<3> > &v);
 void         ScaleVertices(retro3d::Array< mmlVector<3> > &v, float scale);
 mmlVector<3> CalculateCentroid(const retro3d::Array< mmlVector<3> > &v);
@@ -248,7 +248,7 @@ public:
 //	void ExtractMaterial(retro3d::Model &out);
 	void ToModel(retro3d::Model &out);
 	void FromModel(const retro3d::Model &model);
-	void MergeApproximateVertices(float EPSILON = std::numeric_limits<float>::epsilon());
+	void MergeApproximateVertices(const float DIST = std::numeric_limits<float>::epsilon());
 //	void SeparateFaces( void ); // NOTE: Store vertices in faces separately from eachother
 //	void FlipFaces( void );
 //	void MergeIdenticalVertices( void );
@@ -257,7 +257,7 @@ public:
 //	void InsertMaterial();
 	void Destroy( void );
 	void Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back);
-	bool CalculateConvexity( void ) const;
+	bool CalculateConvexity(const float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
 	void Debug_PrintMaterials( void ) const;
 };
 
@@ -494,6 +494,7 @@ private:
 	static bool    FindSplittingPoly(ModelData &model_data);
 	static void    FixTJunction(ModelData *node, const ModelData::Polygon *div_poly, const mmlVector<3> &v1, const mmlVector<3> &v2, const mmlVector<3> &vx, float x);
 	static void    Split(ModelData &model_data, ModelData &root);
+	static void    ChunkySplit(ModelData &model_data, ModelData &root, retro3d::Array< mmlVector<3> > &concave_points);
 	void           AllocateSpace(const ModelData &root);
 	void           BreadthFirstWrite(const ModelData &root);
 	void           UpdateAABBs(retro3d::DisplayModel::GeometryNode *geom_node);
