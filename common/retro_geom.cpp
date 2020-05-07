@@ -38,6 +38,11 @@ void retro3d::AABB::SetHalfExtents(const mmlVector<3> &half_extents)
 	m_half_extents = mmlAbs(half_extents);
 }
 
+mmlVector<3> retro3d::AABB::GetExtents( void ) const
+{
+	return m_half_extents * 2.0f;
+}
+
 mmlVector<3> retro3d::AABB::GetMin( void ) const
 {
 	return m_center - m_half_extents;

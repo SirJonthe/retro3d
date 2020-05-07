@@ -249,16 +249,19 @@ public:
 	void ToModel(retro3d::Model &out);
 	void FromModel(const retro3d::Model &model);
 	void MergeApproximateVertices(const float DIST = std::numeric_limits<float>::epsilon());
+	void MergeIdenticalVertices( void );
+	void AxisSubdivide(const float AXIS_SIZE = 1.0f, const float FP_EPSILON = std::numeric_limits<float>::epsilon());
 //	void SeparateFaces( void ); // NOTE: Store vertices in faces separately from eachother
 //	void FlipFaces( void );
-//	void MergeIdenticalVertices( void );
 	void DefragAttributes( void );
 //	void ExtractMaterial();
 //	void InsertMaterial();
 	void Destroy( void );
-	void Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back);
+	void Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back, const float FP_EPSILON = std::numeric_limits<float>::epsilon());
 	bool CalculateConvexity(const float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
 	void Debug_PrintMaterials( void ) const;
+	void AppendModel(const retro3d::Model &model);
+	void AppendGeometry(const retro3d::Geometry &geom);
 };
 
 class DisplayModel : public retro3d::Asset<DisplayModel>

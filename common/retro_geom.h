@@ -43,6 +43,7 @@ public:
 	void         SetCenter(const mmlVector<3> &center);
 	mmlVector<3> GetHalfExtents( void ) const;
 	void         SetHalfExtents(const mmlVector<3> &half_extents);
+	mmlVector<3> GetExtents( void ) const;
 
 	mmlVector<3> GetMin( void ) const;
 	void         SetMin(mmlVector<3> min);

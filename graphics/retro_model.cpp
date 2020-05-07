@@ -1046,7 +1046,7 @@ void retro3d::CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud,
 		(*outer_hull_faces)[last][0].v = tetra_index[0];
 		(*outer_hull_faces)[last][1].v = tetra_index[2];
 		(*outer_hull_faces)[last][2].v = tetra_index[3];
-		if (mmlDot(mmlSurfaceNormal(tetra_verts[0], tetra_verts[2], tetra_verts[3]), retro3d::NormalFromAToB(center, (tetra_verts[0] + tetra_verts[2] + tetra_verts[3]) / 3.0f)) > 0.0f) { // Why does this need to be flipped???
+		if (mmlDot(mmlSurfaceNormal(tetra_verts[0], tetra_verts[2], tetra_verts[3]), retro3d::NormalFromAToB(center, (tetra_verts[0] + tetra_verts[2] + tetra_verts[3]) / 3.0f)) > 0.0f) { // Why does this comparison need to be flipped???
 			mmlSwap((*outer_hull_faces)[last][0].v, (*outer_hull_faces)[last][2].v);
 		}
 
@@ -1512,6 +1512,11 @@ void retro3d::Geometry::MergeApproximateVertices(const float DIST)
 	}
 }
 
+void retro3d::Geometry::MergeIdenticalVertices( void )
+{
+	MergeApproximateVertices(0.0f);
+}
+
 void retro3d::Geometry::DefragAttributes( void )
 {
 	Map< mmlVector<3> > packed_v;
@@ -1544,6 +1549,45 @@ void retro3d::Geometry::DefragAttributes( void )
 #endif
 }
 
+void retro3d::Geometry::AxisSubdivide(const float AXIS_SIZE, const float FP_EPSILON)
+{
+	const mmlVector<3> min = aabb.GetMin();
+	const mmlVector<3> max = aabb.GetMax();
+
+	const int mins[3] = { mmlFloor(min[0]), mmlFloor(min[1]), mmlFloor(min[2]) };
+	const int maxs[3] = { mmlFloor(max[0]), mmlFloor(max[1]), mmlFloor(max[2]) };
+
+	const int chunks[3] = {
+		int(float(mmlCeil(float(maxs[0] - mins[0]))) / AXIS_SIZE),
+		int(float(mmlCeil(float(maxs[0] - mins[0]))) / AXIS_SIZE),
+		int(float(mmlCeil(float(maxs[0] - mins[0]))) / AXIS_SIZE)
+	};
+
+	retro3d::Geometry final;
+	retro3d::Geometry left = *this;
+	retro3d::Geometry front, back;
+
+	mmlVector<3> normal = mmlVector<3>::Fill(0.0f);
+	mmlVector<3> pos = normal;
+	for (int i = 0; i < 3; ++i) {
+		normal[i] = 1.0f;
+		pos[i] = float(mins[i]) + AXIS_SIZE;
+		for (int n = 1; n <= chunks[i]; ++n) {
+			const retro3d::Plane plane(pos, normal);
+			left.Split(plane, &front, &back, FP_EPSILON);
+			left = front;
+			final.AppendGeometry(back);
+			pos[i] += AXIS_SIZE;
+		}
+		normal[i] = 0.0f;
+		pos[i] = 0.0f;
+	}
+
+	*this = final;
+
+	// Do not merge identical vertices automatically (let the user decide).
+}
+
 void retro3d::Geometry::Destroy( void )
 {
 	name = "";
@@ -1555,7 +1599,7 @@ void retro3d::Geometry::Destroy( void )
 	aabb = retro3d::AABB();
 }
 
-void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back)
+void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back, const float FP_EPSILON)
 {
 	if (front == nullptr && back == nullptr) { return; }
 
@@ -1572,7 +1616,7 @@ void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *fr
 
 		uint32_t i = 0, o = 0, x = 0;
 		for (uint32_t n = 0; n < 8; ++n) {
-			switch (plane.DetermineSide(v[n])) {
+			switch (plane.DetermineSide(v[n], FP_EPSILON)) {
 			case -1: ++o; break;
 			case  0: ++x; break;
 			case  1: ++i; break;
@@ -1635,15 +1679,15 @@ void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *fr
 			}
 
 			// NOTE: Clip the polygon's attributes.
-			plane.Clip(clip_v, clip_v, (front != nullptr) ? &front_v : nullptr, (back != nullptr) ? &back_v : nullptr);
+			plane.Clip(clip_v, clip_v, (front != nullptr) ? &front_v : nullptr, (back != nullptr) ? &back_v : nullptr, FP_EPSILON);
 			if (has_tcoords == true) {
-				plane.Clip(clip_v, clip_t, (front != nullptr) ? &front_t : nullptr, (back != nullptr) ? &back_t : nullptr);
+				plane.Clip(clip_v, clip_t, (front != nullptr) ? &front_t : nullptr, (back != nullptr) ? &back_t : nullptr, FP_EPSILON);
 			} else {
 				front_t.Free();
 				back_t.Free();
 			}
 			if (has_normals == true) {
-				plane.Clip(clip_v, clip_n, (front != nullptr) ? &front_n : nullptr, (back != nullptr) ? &back_n : nullptr);
+				plane.Clip(clip_v, clip_n, (front != nullptr) ? &front_n : nullptr, (back != nullptr) ? &back_n : nullptr, FP_EPSILON);
 			} else {
 				front_n.Free();
 				back_n.Free();
