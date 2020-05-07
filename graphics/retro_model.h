@@ -211,7 +211,7 @@ void         FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud,
 	retro3d::Array< Surface > surfaces;
 };*/
 
-class Geometry
+class GeometryEditor
 {
 private:
 	template < typename type_t >
@@ -233,7 +233,7 @@ private:
 	Map< mmlVector<3> >         v;
 	Map< mmlVector<2> >         t;
 	Map< mmlVector<3> >         n;
-	retro3d::Array<MaterialMap> m;
+	Map<MaterialMap>            m;
 	Map<FaceMap>                f;
 	mtlShared<retro3d::Texture> lightmap;
 	retro3d::AABB               aabb;
@@ -241,13 +241,13 @@ private:
 private:
 	static uint64_t Hash(int32_t a);
 	static uint64_t Hash(int32_t a, int32_t b);
-	void            StoreClippedFace(Geometry *out, const FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n);
+	void            StoreClippedFace(GeometryEditor *out, const FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n);
 	void            UpdateAABB( void );
 
 public:
 //	void ExtractMaterial(retro3d::Model &out);
 	void ToModel(retro3d::Model &out);
-	void FromModel(const retro3d::Model &model);
+	void FromModel(const retro3d::Model &model, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
 	void MergeApproximateVertices(const float DIST = std::numeric_limits<float>::epsilon());
 	void MergeIdenticalVertices( void );
 	void AxisSubdivide(const float AXIS_SIZE = 1.0f, const float FP_EPSILON = std::numeric_limits<float>::epsilon());
@@ -257,11 +257,11 @@ public:
 //	void ExtractMaterial();
 //	void InsertMaterial();
 	void Destroy( void );
-	void Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back, const float FP_EPSILON = std::numeric_limits<float>::epsilon());
+	void Split(const retro3d::Plane &plane, retro3d::GeometryEditor *front, retro3d::GeometryEditor *back, const float FP_EPSILON = std::numeric_limits<float>::epsilon());
 	bool CalculateConvexity(const float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
 	void Debug_PrintMaterials( void ) const;
-	void AppendModel(const retro3d::Model &model);
-	void AppendGeometry(const retro3d::Geometry &geom);
+	void AppendModel(const retro3d::Model &model, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
+	void AppendGeometry(const retro3d::GeometryEditor &geom, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
 };
 
 class DisplayModel : public retro3d::Asset<DisplayModel>

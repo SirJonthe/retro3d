@@ -1232,20 +1232,20 @@ void retro3d::FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud
 	}
 }
 
-uint64_t retro3d::Geometry::Hash(int32_t a)
+uint64_t retro3d::GeometryEditor::Hash(int32_t a)
 {
 	const uint32_t ua = a >= 0 ? *reinterpret_cast<uint32_t*>(&a) : NO_INDEX;
 	return uint64_t(ua);
 }
 
-uint64_t retro3d::Geometry::Hash(int32_t a, int32_t b)
+uint64_t retro3d::GeometryEditor::Hash(int32_t a, int32_t b)
 {
 	// NOTE: A unique hash of two indices where h(a,b) = h(b,a)
 	if (a < 0 || b < 0) { return uint64_t(NO_INDEX); }
 	return (Hash(mmlMin(a, b)) << 32) | Hash(mmlMax(a, b));
 }
 
-void retro3d::Geometry::StoreClippedFace(retro3d::Geometry *out, const retro3d::Geometry::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
+void retro3d::GeometryEditor::StoreClippedFace(retro3d::GeometryEditor *out, const retro3d::GeometryEditor::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
 {
 	FaceMap *out_face = &out->m[current_material_index].f[uint64_t(out->m[current_material_index].f.size())]; // NOTE: Adding an element last to the table.
 	out_face->i.Create(clipped_v.GetSize());
@@ -1311,7 +1311,7 @@ void retro3d::Geometry::StoreClippedFace(retro3d::Geometry *out, const retro3d::
 	}
 }
 
-void retro3d::Geometry::UpdateAABB( void )
+void retro3d::GeometryEditor::UpdateAABB( void )
 {
 	if (v.size() > 0) {
 		mmlVector<3> min, max;
@@ -1326,7 +1326,7 @@ void retro3d::Geometry::UpdateAABB( void )
 	}
 }
 
-void retro3d::Geometry::ToModel(retro3d::Model &out)
+void retro3d::GeometryEditor::ToModel(retro3d::Model &out)
 {
 	int32_t i;
 	Map<int32_t> v_table;
@@ -1371,7 +1371,7 @@ void retro3d::Geometry::ToModel(retro3d::Model &out)
 		}
 	}
 
-	out.m.Create(m.GetSize());
+	out.m.Create(m.size());
 	bool is_clipped = false;
 	for (int32_t mit = 0; mit != out.m.GetSize(); ++mit) {
 		retro3d::Material *ma = &out.m[mit];
@@ -1409,7 +1409,7 @@ void retro3d::Geometry::ToModel(retro3d::Model &out)
 	}
 }
 
-void retro3d::Geometry::FromModel(const retro3d::Model &in)
+void retro3d::GeometryEditor::FromModel(const retro3d::Model &in, const retro3d::Transform &transform)
 {
 	// NOTE, TODO, BUG: This code does not handle negative indices. Unsure how this will affect converting the mapped model back to linear format.
 
@@ -1418,16 +1418,16 @@ void retro3d::Geometry::FromModel(const retro3d::Model &in)
 	aabb.FromGeometry(in.v);
 
 	for (int32_t i = 0; i < in.v.GetSize(); ++i) {
-		v[Hash(i)] = in.v[i];
+		v[Hash(i)] = transform.TransformPoint(in.v[i]);
 	}
 	for (int32_t i = 0; i < in.t.GetSize(); ++i) {
 		t[Hash(i)] = in.t[i];
 	}
 	for (int32_t i = 0; i < in.n.GetSize(); ++i) {
-		n[Hash(i)] = in.n[i];
+		n[Hash(i)] = transform.TransformNormal(in.n[i]);
 	}
-	m.Create(in.m.GetSize());
-	for (int32_t i = 0; i < m.GetSize(); ++i) {
+	m.reserve(in.m.GetSize());
+	for (size_t i = 0; i < m.size(); ++i) {
 		MaterialMap             *ma = &m[i];
 		const retro3d::Material *mb = &in.m[i];
 
@@ -1453,7 +1453,7 @@ void retro3d::Geometry::FromModel(const retro3d::Model &in)
 	}
 }
 
-void retro3d::Geometry::MergeApproximateVertices(const float DIST)
+void retro3d::GeometryEditor::MergeApproximateVertices(const float DIST)
 {
 	// NOTE: Remove all similar vertices in the model by merging the faces together.
 	// BUG:  Does not work (a invalidated when b is erased?).
@@ -1470,7 +1470,7 @@ void retro3d::Geometry::MergeApproximateVertices(const float DIST)
 				}
 			}
 			if (j == 3) {
-				for (int32_t mit = 0; mit < m.GetSize(); ++mit) {
+				for (size_t mit = 0; mit < m.size(); ++mit) {
 					MaterialMap *mat = &m[mit];
 					for (auto fit = mat->f.begin(); fit != mat->f.end(); ++fit) {
 						FaceMap *face = &fit->second;
@@ -1488,7 +1488,7 @@ void retro3d::Geometry::MergeApproximateVertices(const float DIST)
 
 	// TODO: Pass through all faces. Remove all duplicate indices in face. If face is left with 1 or 2 indices, remove face completely.
 	FaceMap new_face;
-	for (int32_t mit = 0; mit < m.GetSize(); ++mit) {
+	for (size_t mit = 0; mit < m.size(); ++mit) {
 		MaterialMap *mat = &m[mit];
 		for (auto fit = mat->f.begin(); fit != mat->f.end();) {
 			FaceMap *face = &fit->second;
@@ -1512,18 +1512,18 @@ void retro3d::Geometry::MergeApproximateVertices(const float DIST)
 	}
 }
 
-void retro3d::Geometry::MergeIdenticalVertices( void )
+void retro3d::GeometryEditor::MergeIdenticalVertices( void )
 {
 	MergeApproximateVertices(0.0f);
 }
 
-void retro3d::Geometry::DefragAttributes( void )
+void retro3d::GeometryEditor::DefragAttributes( void )
 {
 	Map< mmlVector<3> > packed_v;
 	Map< mmlVector<2> > packed_t;
 	Map< mmlVector<3> > packed_n;
 
-	for (int32_t mit = 0; mit < m.GetSize(); ++mit) {
+	for (size_t mit = 0; mit < m.size(); ++mit) {
 		const MaterialMap *mat = &m[mit];
 		for (auto fit = mat->f.begin(); fit != mat->f.end(); ++fit) {
 			const FaceMap *face = &fit->second;
@@ -1549,7 +1549,7 @@ void retro3d::Geometry::DefragAttributes( void )
 #endif
 }
 
-void retro3d::Geometry::AxisSubdivide(const float AXIS_SIZE, const float FP_EPSILON)
+void retro3d::GeometryEditor::AxisSubdivide(const float AXIS_SIZE, const float FP_EPSILON)
 {
 	const mmlVector<3> min = aabb.GetMin();
 	const mmlVector<3> max = aabb.GetMax();
@@ -1563,9 +1563,9 @@ void retro3d::Geometry::AxisSubdivide(const float AXIS_SIZE, const float FP_EPSI
 		int(float(mmlCeil(float(maxs[0] - mins[0]))) / AXIS_SIZE)
 	};
 
-	retro3d::Geometry final;
-	retro3d::Geometry left = *this;
-	retro3d::Geometry front, back;
+	retro3d::GeometryEditor final;
+	retro3d::GeometryEditor left = *this;
+	retro3d::GeometryEditor front, back;
 
 	mmlVector<3> normal = mmlVector<3>::Fill(0.0f);
 	mmlVector<3> pos = normal;
@@ -1588,18 +1588,18 @@ void retro3d::Geometry::AxisSubdivide(const float AXIS_SIZE, const float FP_EPSI
 	// Do not merge identical vertices automatically (let the user decide).
 }
 
-void retro3d::Geometry::Destroy( void )
+void retro3d::GeometryEditor::Destroy( void )
 {
 	name = "";
 	v.clear();
 	t.clear();
 	n.clear();
-	m.Free();
+	m.clear();
 	lightmap.Delete();
 	aabb = retro3d::AABB();
 }
 
-void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *front, retro3d::Geometry *back, const float FP_EPSILON)
+void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::GeometryEditor *front, retro3d::GeometryEditor *back, const float FP_EPSILON)
 {
 	if (front == nullptr && back == nullptr) { return; }
 
@@ -1636,10 +1636,10 @@ void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *fr
 	retro3d::Array<mmlVector<2>> clip_t, front_t, back_t;
 	retro3d::Array<mmlVector<3>> clip_n, front_n, back_n;
 
-	if (front != nullptr) { front->m.Create(m.GetSize()); }
-	if (back  != nullptr) { back->m.Create(m.GetSize()); }
+	if (front != nullptr) { front->m.reserve(m.size()); }
+	if (back  != nullptr) { back->m.reserve(m.size()); }
 
-	for (int32_t mit = 0; mit < m.GetSize(); ++mit) {
+	for (size_t mit = 0; mit < m.size(); ++mit) {
 
 		if (front != nullptr) {
 			front->m[mit].name = m[mit].name;
@@ -1719,7 +1719,7 @@ void retro3d::Geometry::Split(const retro3d::Plane &plane, retro3d::Geometry *fr
 	}
 }
 
-bool retro3d::Geometry::CalculateConvexity(const float FP_EPSILON) const
+bool retro3d::GeometryEditor::CalculateConvexity(const float FP_EPSILON) const
 {
 	// NOTE: Assertion = For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
 	size_t counter = 0;
@@ -1740,12 +1740,90 @@ bool retro3d::Geometry::CalculateConvexity(const float FP_EPSILON) const
 	return true; // NOTE: Passed all tests, i.e. convex.
 }
 
-void retro3d::Geometry::Debug_PrintMaterials( void ) const
+void retro3d::GeometryEditor::Debug_PrintMaterials( void ) const
 {
-	for (int32_t i = 0; i < m.GetSize(); ++i) {
-		std::cout << m[i].name << std::endl;
-		std::cout << m[i].cd[0] << "," << m[i].cd[1] << "," << m[i].cd[2] << std::endl;
+	for (size_t i = 0; i < m.size(); ++i) {
+		std::cout << m.at(i).name << std::endl;
+		std::cout << m.at(i).cd[0] << "," << m.at(i).cd[1] << "," << m.at(i).cd[2] << std::endl;
 	}
+}
+
+void retro3d::GeometryEditor::AppendModel(const retro3d::Model &model, const retro3d::Transform &transform)
+{
+	const size_t v_size = v.size();
+	const size_t t_size = t.size();
+	const size_t n_size = n.size();
+	const size_t m_size = m.size();
+	for (int i = 0; i < model.v.GetSize(); ++i) {
+		v[v_size + i] = transform.TransformPoint(model.v[i]);
+	}
+	for (int i = 0; i < model.t.GetSize(); ++i) {
+		t[t_size + i] = model.t[i];
+	}
+	for (int i = 0; i < model.n.GetSize(); ++i) {
+		n[n_size + i] = transform.TransformNormal(model.n[i]);
+	}
+	for (int i = 0; i < model.m.GetSize(); ++i) {
+		MaterialMap *mat = &m[m_size + i];
+		mat->name = model.m[i].name;
+		mat->cd   = model.m[i].cd;
+		mat->td   = model.m[i].td;
+		mat->f.reserve(model.m[i].f.GetSize());
+		for (int n = 0; n < model.m[i].f.GetSize(); ++n) {
+			FaceMap *face = &mat->f[n];
+			face->i.Resize(model.m[i].f[n].GetSize());
+			for (int j = 0; j < face->i.GetSize(); ++j) {
+				face->i[j].v = model.m[i].f[n][j].v >= 0 ? Hash(model.m[i].f[n][j].v + v_size) : NO_INDEX;
+				face->i[j].t = model.m[i].f[n][j].t >= 0 ? Hash(model.m[i].f[n][j].t + t_size) : NO_INDEX;
+				face->i[j].n = model.m[i].f[n][j].n >= 0 ? Hash(model.m[i].f[n][j].n + n_size) : NO_INDEX;
+			}
+		}
+	}
+
+	UpdateAABB();
+}
+
+void retro3d::GeometryEditor::AppendGeometry(const retro3d::GeometryEditor &geom, const retro3d::Transform &transform)
+{
+	const size_t v_size = v.size();
+	const size_t t_size = t.size();
+	const size_t n_size = n.size();
+	const size_t m_size = m.size();
+
+	v.reserve(v_size + geom.v.size());
+	t.reserve(t_size + geom.t.size());
+	n.reserve(n_size + geom.n.size());
+	m.reserve(m_size + geom.m.size());
+
+	for (size_t i = 0; i < geom.v.size(); ++i) {
+		v[v_size + i] = transform.TransformPoint(geom.v.at(i));
+	}
+	for (size_t i = 0; i < geom.t.size(); ++i) {
+		t[t_size + i] = geom.t.at(i);
+	}
+	for (size_t i = 0; i < geom.n.size(); ++i) {
+		n[n_size + i] = transform.TransformNormal(geom.n.at(i));
+	}
+	for (size_t i = 0; i < geom.m.size(); ++i) {
+		MaterialMap *md = &m[m_size + i];
+		const MaterialMap *ms = &geom.m.at(i);
+		md->name = ms->name;
+		md->cd   = ms->cd;
+		md->td   = ms->td;
+		md->f.reserve(ms->f.size());
+		for (size_t j = 0; j < ms->f.size(); ++j) {
+			FaceMap *fd = &md->f[j];
+			const FaceMap *fs = &ms->f.at(j);
+			fd->i.Resize(fs->i.GetSize());
+			for (int k = 0; k < fd->i.GetSize(); ++k) {
+				fd->i[k].v = fs->i[k].v != NO_INDEX ? v_size + fs->i[k].v : NO_INDEX;
+				fd->i[k].t = fs->i[k].t != NO_INDEX ? t_size + fs->i[k].t : NO_INDEX;
+				fd->i[k].n = fs->i[k].n != NO_INDEX ? n_size + fs->i[k].n : NO_INDEX;
+			}
+		}
+	}
+
+	UpdateAABB();
 }
 
 retro3d::DisplayModel::GeometryQueue::GeometryQueue( void ) : m_data(nullptr), m_items(nullptr), m_stack(nullptr), m_item_count(0), m_max_items(0), m_max_stack(0), m_stack_count(0)
