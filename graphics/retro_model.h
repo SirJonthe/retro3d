@@ -110,7 +110,7 @@ mmlVector<3> CalculateCentroid(const retro3d::Array< mmlVector<3> > &v);
 mmlVector<3> CalculateCenterOfMass(const retro3d::Array< mmlVector<3> > &v);
 mmlVector<3> CalculateCenterOfVolume(const retro3d::Array< mmlVector<3> > &v);
 mmlVector<3> FindExtremeVertexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &dir);
-int          FindExtremeVertexIndexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &dir);
+int32_t      FindExtremeVertexIndexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &dir);
 bool         CalculatePointInConvexHull(const retro3d::Array< mmlVector<3> > &hull_v, const mmlVector<3> &p);
 void         ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<3> > &out);
 void         ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexV &f, retro3d::Array< mmlVector<3> > &out);
@@ -220,48 +220,93 @@ private:
 	static constexpr uint32_t NO_INDEX = -uint32_t(1);
 	struct IndexMap { uint64_t v, t, n; };
 	struct FaceMap  { retro3d::Array<IndexMap> i; };
-	struct MaterialMap
+	struct SurfaceMap
 	{
 		std::string                 name;
-		Map<FaceMap>                f;
-		mmlVector<3>                cd;
-		mtlShared<retro3d::Texture> td;
+		Map<FaceMap>                faces;
+		mmlVector<3>                diffuse_color;
+		mtlShared<retro3d::Texture> diffuse_texture;
 	};
 
 private:
-	std::string                 name;
-	Map< mmlVector<3> >         v;
-	Map< mmlVector<2> >         t;
-	Map< mmlVector<3> >         n;
-	Map<MaterialMap>            m;
-	Map<FaceMap>                f;
-	mtlShared<retro3d::Texture> lightmap;
-	retro3d::AABB               aabb;
+	std::string                 m_name;
+	Map< mmlVector<3> >         m_vert;
+	Map< mmlVector<2> >         m_tcoord;
+	Map< mmlVector<3> >         m_normal;
+	Map<SurfaceMap>             m_surfs;
+	Map<FaceMap>                m_hull;
+	mtlShared<retro3d::Texture> m_lightmap;
+	mmlVector<3>                m_centroid;
+	mmlVector<3>                m_center;
+	retro3d::AABB               m_aabb;
+	bool                        m_is_convex;
+	float                       m_FP_EPSILON;
 
 private:
 	static uint64_t Hash(int32_t a);
 	static uint64_t Hash(int32_t a, int32_t b);
 	void            StoreClippedFace(GeometryEditor *out, const FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n);
-	void            UpdateAABB( void );
+	retro3d::AABB   CalculateAABB( void ) const;
+	mmlVector<3>    CalculateCentroid( void ) const;
+	bool            CalculateConvexity( void ) const;
+	void            Postprocess( void );
+	uint64_t        FindExtremeVertexIndexAlongDirection(const mmlVector<3> &search_dir) const;
+	void            RemoveConcavePoints( void );
+	void            UpdateHull( void );
+	static void     ReindexFaces(Map<FaceMap> &map, const Map<uint64_t> &v_key, const Map<uint64_t> &t_key, const Map<uint64_t> &n_key);
 
 public:
-//	void ExtractMaterial(retro3d::Model &out);
+	explicit GeometryEditor(const float FP_EPSILON = std::numeric_limits<float>::epsilon());
+
+	// Output the geometry to a generic linear model format.
 	void ToModel(retro3d::Model &out);
+
+	// Format generic linear model format to geometry editor format.
 	void FromModel(const retro3d::Model &model, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
-	void MergeApproximateVertices(const float DIST = std::numeric_limits<float>::epsilon());
+
+	// Remove vertices at approximately the same location.
+	void MergeApproximateVertices(const float DIST);
+
+	// Remove vertices at exactly the same location.
 	void MergeIdenticalVertices( void );
-	void AxisSubdivide(const float AXIS_SIZE = 1.0f, const float FP_EPSILON = std::numeric_limits<float>::epsilon());
+
+	// Divide geometry into cube sized chunks. May be used together with MergeIdenticalVertices to stitch identical vertices generated together again.
+	void AxisSubdivide(const float AXIS_SIZE = 1.0f);
+
+	// Store all vertices separately on a per face basis.
 //	void SeparateFaces( void ); // NOTE: Store vertices in faces separately from eachother
+
+	// Invert the model (inside becomes outside, and vice versa).
 //	void FlipFaces( void );
+
+	// Remove vertex attributes that are not referenced in any face.
 	void DefragAttributes( void );
-//	void ExtractMaterial();
-//	void InsertMaterial();
+
+	// Return a model of a specified surface.
+//	void ExtractSurface();
+
+	// Insert a surface to the geometry.
+//	void InsertSurface();
+
+	// Free up all memory.
 	void Destroy( void );
-	void Split(const retro3d::Plane &plane, retro3d::GeometryEditor *front, retro3d::GeometryEditor *back, const float FP_EPSILON = std::numeric_limits<float>::epsilon());
-	bool CalculateConvexity(const float FP_EPSILON = std::numeric_limits<float>::epsilon()) const;
+
+	// Divide geometry by a plane and return the front and back as separate models.
+	void Split(const retro3d::Plane &plane, retro3d::GeometryEditor *front, retro3d::GeometryEditor *back);
+
+	// Print materials.
 	void Debug_PrintMaterials( void ) const;
+
+	// Add a model to the geometry editor.
 	void AppendModel(const retro3d::Model &model, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
+
+	// Add geometry from another geometry editor to this editor.
 	void AppendGeometry(const retro3d::GeometryEditor &geom, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
+
+	// Removes concave points and faces from the editor and stitches holes back together (creates a convex model). NOTE: All surfaces will be baked into one.
+	void MakeConvex( void );
+
+	bool IsConvex( void ) const;
 };
 
 class DisplayModel : public retro3d::Asset<DisplayModel>

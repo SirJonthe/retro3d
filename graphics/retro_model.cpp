@@ -504,10 +504,12 @@ mmlVector<3> retro3d::CalculateCenterOfVolume(const retro3d::Array< mmlVector<3>
 
 mmlVector<3> retro3d::FindExtremeVertexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &search_dir)
 {
-	mmlVector<3> max_v = v[0];
-	float max_dot = mmlDot(max_v, search_dir);
+	if (v.GetSize() <= 0) { return mmlVector<3>::Fill(0); }
 
-	for (int i = 1; i < v.GetSize(); ++i) {
+	mmlVector<3> max_v   = v[0];
+	float        max_dot = mmlDot(max_v, search_dir);
+
+	for (int32_t i = 1; i < v.GetSize(); ++i) {
 		const float dot = mmlDot(v[i], search_dir);
 		if (dot > max_dot) {
 			max_dot = dot;
@@ -518,17 +520,17 @@ mmlVector<3> retro3d::FindExtremeVertexAlongDirection(const retro3d::Array< mmlV
 	return max_v;
 }
 
-int retro3d::FindExtremeVertexIndexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &search_dir)
+int32_t retro3d::FindExtremeVertexIndexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &search_dir)
 {
-	mmlVector<3> max_v = v[0];
-	int max_i = 0;
-	float max_dot = mmlDot(max_v, search_dir);
+	if (v.GetSize() <= 0) { return -1; }
 
-	for (int i = 1; i < v.GetSize(); ++i) {
+	int32_t max_i   = 0;
+	float   max_dot = mmlDot(v[0], search_dir);
+
+	for (int32_t i = 1; i < v.GetSize(); ++i) {
 		const float dot = mmlDot(v[i], search_dir);
 		if (dot > max_dot) {
 			max_dot = dot;
-			max_v = v[i];
 			max_i = i;
 		}
 	}
@@ -1247,7 +1249,7 @@ uint64_t retro3d::GeometryEditor::Hash(int32_t a, int32_t b)
 
 void retro3d::GeometryEditor::StoreClippedFace(retro3d::GeometryEditor *out, const retro3d::GeometryEditor::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
 {
-	FaceMap *out_face = &out->m[current_material_index].f[uint64_t(out->m[current_material_index].f.size())]; // NOTE: Adding an element last to the table.
+	FaceMap *out_face = &out->m_surfs[current_material_index].faces[Hash(out->m_surfs[current_material_index].faces.size())]; // NOTE: Adding an element last to the table.
 	out_face->i.Create(clipped_v.GetSize());
 
 	int32_t c = 0; // NOTE: (c)lipped index.
@@ -1260,7 +1262,7 @@ void retro3d::GeometryEditor::StoreClippedFace(retro3d::GeometryEditor *out, con
 	bool is_clipped = false;
 
 	while (c < clipped_v.GetSize()) {
-		if (clipped_v[c] == v[unclipped_index.i[u].v]) {
+		if (clipped_v[c] == m_vert[unclipped_index.i[u].v]) {
 
 			hv = unclipped_index.i[u].v;
 			ht = unclipped_index.i[u].t;
@@ -1273,7 +1275,7 @@ void retro3d::GeometryEditor::StoreClippedFace(retro3d::GeometryEditor *out, con
 			const int32_t c1 = c < clipped_v.GetSize() - 1 ? c + 1 : 0;
 
 			// NOTE: Iterate u until u matches c0 or c1 (FP inequality is okay since we are looking for bit-identical matches).
-			while (clipped_v[c0] != v[unclipped_index.i[u].v] && clipped_v[c1] != v[unclipped_index.i[u].v]) {
+			while (clipped_v[c0] != m_vert[unclipped_index.i[u].v] && clipped_v[c1] != m_vert[unclipped_index.i[u].v]) {
 				u = (u + 1) % unclipped_index.i.GetSize();
 			}
 			const int32_t u0 = u > 0 ? (u - 1) % unclipped_index.i.GetSize() : unclipped_index.i.GetSize() - 1;
@@ -1286,12 +1288,12 @@ void retro3d::GeometryEditor::StoreClippedFace(retro3d::GeometryEditor *out, con
 			is_clipped = true;
 		}
 
-		out->v[hv] = clipped_v[c];
+		out->m_vert[hv] = clipped_v[c];
 		if (ht != NO_INDEX && clipped_t.GetSize() == clipped_v.GetSize()) {
-			out->t[ht] = clipped_t[c];
+			out->m_tcoord[ht] = clipped_t[c];
 		}
 		if (hn != NO_INDEX && clipped_n.GetSize() == clipped_v.GetSize()) {
-			out->n[hn] = mmlNormalizeIf(clipped_n[c]);
+			out->m_normal[hn] = mmlNormalizeIf(clipped_n[c]);
 		}
 
 		out_face->i[c].v = hv;
@@ -1304,19 +1306,21 @@ void retro3d::GeometryEditor::StoreClippedFace(retro3d::GeometryEditor *out, con
 	if (is_clipped) {
 		std::cout << "+" << out_face->i.GetSize() << std::endl;
 		for (int i = 0; i < out_face->i.GetSize(); ++i) {
-			std::cout << "  (" << out_face->i[i].v << ") " << out->v[out_face->i[i].v][0] << "," << out->v[out_face->i[i].v][1] << "," << out->v[out_face->i[i].v][2] << std::endl;
+			mmlVector<3> v = out->m_vert[out_face->i[i].v];
+			std::cout << "  (" << out_face->i[i].v << ") " << v[0] << "," << v[1] << "," << v[2] << std::endl;
 		}
 	} else {
 		//
 	}
 }
 
-void retro3d::GeometryEditor::UpdateAABB( void )
+retro3d::AABB retro3d::GeometryEditor::CalculateAABB( void ) const
 {
-	if (v.size() > 0) {
+	retro3d::AABB aabb;
+	if (m_vert.size() > 0) {
 		mmlVector<3> min, max;
-		min = max = v.begin()->second;
-		for (auto it = v.begin(); it != v.end(); ++it) {
+		min = max = m_vert.begin()->second;
+		for (auto it = m_vert.begin(); it != m_vert.end(); ++it) {
 			min = mmlMin(min, it->second);
 			max = mmlMax(max, it->second);
 		}
@@ -1324,7 +1328,101 @@ void retro3d::GeometryEditor::UpdateAABB( void )
 	} else {
 		aabb = retro3d::AABB();
 	}
+	return aabb;
 }
+
+mmlVector<3> retro3d::GeometryEditor::CalculateCentroid( void ) const
+{
+	const float INV_SIZE = 1.0f / m_vert.size();
+	mmlVector<3> centroid = mmlVector<3>::Fill(1.0f);
+	for (auto it = m_vert.begin(); it != m_vert.end(); ++it) {
+		centroid += it->second * INV_SIZE;
+	}
+	return centroid;
+}
+
+bool retro3d::GeometryEditor::CalculateConvexity( void ) const
+{
+	// NOTE: Assertion = For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
+	size_t counter = 0;
+	for (auto f0 = m_hull.begin(); ++counter < m_hull.size(); ++f0) {
+		const FaceMap *face0 = &f0->second;
+		const retro3d::Plane plane(m_vert.at(face0->i[0].v), m_vert.at(face0->i[1].v), m_vert.at(face0->i[2].v));
+		auto f1 = f0;
+		++f1;
+		for (; f1 != m_hull.end(); ++f1) {
+			const FaceMap *face1 = &f1->second;
+			const int32_t vert_count = face1->i.GetSize();
+			for (int32_t v0 = 0; v0 < vert_count; ++v0) {
+				const mmlVector<3> vcoord = m_vert.at(face1->i[v0].v);
+				if (plane.DetermineSide(vcoord, m_FP_EPSILON) > 0) { return false; } // NOTE: Current vertex is in front of current plane, i.e. not convex.
+			}
+		}
+	}
+	return true; // NOTE: Passed all tests, i.e. convex.
+}
+
+void retro3d::GeometryEditor::Postprocess( void )
+{
+	DefragAttributes();
+
+	m_aabb      = CalculateAABB();
+	m_centroid  = CalculateCentroid();
+	m_center    = m_aabb.GetCenter();
+	m_is_convex = CalculateConvexity();
+}
+
+uint64_t retro3d::GeometryEditor::FindExtremeVertexIndexAlongDirection(const mmlVector<3> &search_dir) const
+{
+	if (m_vert.size() == 0) { return NO_INDEX; }
+
+	uint64_t max_i   = 0;
+	float    max_dot = mmlDot(m_vert.begin()->second, search_dir);
+
+	for (auto i = m_vert.begin(); i != m_vert.end(); ++i) {
+		const float dot = mmlDot(i->second, search_dir);
+		if (dot > max_dot) {
+			max_dot = dot;
+			max_i = i->first;
+		}
+	}
+
+	return max_i;
+}
+
+void retro3d::GeometryEditor::RemoveConcavePoints( void )
+{
+	Map< mmlVector<3> > convex_points;
+	convex_points.reserve(size_t(m_vert.size()));
+	for (size_t i = 0; i < m_vert.size(); ++i) {
+		const int32_t extreme_index = FindExtremeVertexIndexAlongDirection(retro3d::NormalFromAToB(m_centroid, m_vert[i]));
+		convex_points[extreme_index] = m_vert[extreme_index];
+	}
+
+	m_vert = std::move(convex_points);
+	m_centroid = CalculateCentroid();
+	DefragAttributes();
+}
+
+void retro3d::GeometryEditor::UpdateHull( void )
+{
+	size_t total_hull_size = 0;
+	for (auto s = m_surfs.begin(); s != m_surfs.end(); ++s) {
+		total_hull_size += s->second.faces.size();
+	}
+	m_hull.clear();
+	m_hull.reserve(total_hull_size);
+
+	uint64_t i = 0;
+	for (auto s = m_surfs.begin(); s != m_surfs.end(); ++s) {
+		for (auto f = s->second.faces.begin(); f != s->second.faces.end(); ++f) {
+			m_hull[i++].i = f->second.i;
+		}
+	}
+}
+
+retro3d::GeometryEditor::GeometryEditor(const float FP_EPSILON) : m_centroid(mmlVector<3>::Fill(0.0f)), m_center(mmlVector<3>::Fill(0.0f)), m_is_convex(false), m_FP_EPSILON(FP_EPSILON)
+{}
 
 void retro3d::GeometryEditor::ToModel(retro3d::Model &out)
 {
@@ -1333,25 +1431,25 @@ void retro3d::GeometryEditor::ToModel(retro3d::Model &out)
 	Map<int32_t> t_table;
 	Map<int32_t> n_table;
 
-	out.name     = name;
-	out.lightmap = lightmap;
-	out.aabb     = aabb;
+	out.name     = m_name;
+	out.lightmap = m_lightmap;
+	out.aabb     = m_aabb;
 
-	v_table.reserve(v.size());
-	out.v.Create(int(v.size()));
+	v_table.reserve(m_vert.size());
+	out.v.Create(int(m_vert.size()));
 	i = 0;
 	v_table[NO_INDEX] = -1;
-	for (auto it = v.begin(); it != v.end(); ++it) {
+	for (auto it = m_vert.begin(); it != m_vert.end(); ++it) {
 		out.v[i] = it->second;
 		v_table[it->first] = i;
 		++i;
 	}
 
-	t_table.reserve(t.size());
-	out.t.Create(int(t.size()));
+	t_table.reserve(m_tcoord.size());
+	out.t.Create(int(m_tcoord.size()));
 	i = 0;
 	t_table[NO_INDEX] = -1;
-	for (auto it = t.begin(); it != t.end(); ++it) {
+	for (auto it = m_tcoord.begin(); it != m_tcoord.end(); ++it) {
 		if (it->first != NO_INDEX) {
 			out.t[i] = it->second;
 			t_table[it->first] = i;
@@ -1359,11 +1457,11 @@ void retro3d::GeometryEditor::ToModel(retro3d::Model &out)
 		}
 	}
 
-	n_table.reserve(n.size());
-	out.n.Create(int(n.size()));
+	n_table.reserve(m_normal.size());
+	out.n.Create(int(m_normal.size()));
 	i = 0;
 	n_table[NO_INDEX] = -1;
-	for (auto it = n.begin(); it != n.end(); ++it) {
+	for (auto it = m_normal.begin(); it != m_normal.end(); ++it) {
 		if (it->first != NO_INDEX) {
 			out.n[i] = it->second;
 			n_table[it->first] = i;
@@ -1371,17 +1469,17 @@ void retro3d::GeometryEditor::ToModel(retro3d::Model &out)
 		}
 	}
 
-	out.m.Create(m.size());
+	out.m.Create(m_surfs.size());
 	bool is_clipped = false;
 	for (int32_t mit = 0; mit != out.m.GetSize(); ++mit) {
 		retro3d::Material *ma = &out.m[mit];
-		const MaterialMap *mb = &m[mit];
+		const SurfaceMap *mb = &m_surfs[mit];
 		ma->name = mb->name;
-		ma->cd = mb->cd;
-		ma->td = mb->td;
-		ma->f.SetCapacity(int(mb->f.size()));
+		ma->cd = mb->diffuse_color;
+		ma->td = mb->diffuse_texture;
+		ma->f.SetCapacity(int(mb->faces.size()));
 		ma->f.Resize(0);
-		for (auto fit = mb->f.begin(); fit != mb->f.end(); ++fit) {
+		for (auto fit = mb->faces.begin(); fit != mb->faces.end(); ++fit) {
 			is_clipped = false;
 			retro3d::FaceIndex *fa = &out.m[mit].f.Add();
 			const FaceMap      *fb = &fit->second;
@@ -1402,7 +1500,9 @@ void retro3d::GeometryEditor::ToModel(retro3d::Model &out)
 				for (int i = 0; i < fa->GetSize(); ++i) {
 					const retro3d::IndexVTN *ia = &(*fa)[i];
 					const IndexMap          *ib = &fb->i[i];
-					std::cout << "  (" << ib->v << ") " << v[ib->v][0] << "," << v[ib->v][1] << "," << v[ib->v][2] << " -> " << "(" << ia->v << ")" << out.v[ia->v][0] << "," << out.v[ia->v][1] << "," << out.v[ia->v][2] << std::endl;
+					const mmlVector<3> b = m_vert[ib->v];
+					const mmlVector<3> a = out.v[ia->v];
+					std::cout << "  (" << ib->v << ") " << b[0] << "," << b[1] << "," << b[2] << " -> " << "(" << ia->v << ")" << a[0] << "," << a[1] << "," << a[2] << std::endl;
 				}
 			}
 		}
@@ -1413,30 +1513,30 @@ void retro3d::GeometryEditor::FromModel(const retro3d::Model &in, const retro3d:
 {
 	// NOTE, TODO, BUG: This code does not handle negative indices. Unsure how this will affect converting the mapped model back to linear format.
 
-	name     = in.name;
-	lightmap = in.lightmap;
-	aabb.FromGeometry(in.v);
+	m_name     = in.name;
+	m_lightmap = in.lightmap;
+	m_aabb.FromGeometry(in.v);
 
 	for (int32_t i = 0; i < in.v.GetSize(); ++i) {
-		v[Hash(i)] = transform.TransformPoint(in.v[i]);
+		m_vert[Hash(i)] = transform.TransformPoint(in.v[i]);
 	}
 	for (int32_t i = 0; i < in.t.GetSize(); ++i) {
-		t[Hash(i)] = in.t[i];
+		m_tcoord[Hash(i)] = in.t[i];
 	}
 	for (int32_t i = 0; i < in.n.GetSize(); ++i) {
-		n[Hash(i)] = transform.TransformNormal(in.n[i]);
+		m_normal[Hash(i)] = transform.TransformNormal(in.n[i]);
 	}
-	m.reserve(in.m.GetSize());
-	for (size_t i = 0; i < m.size(); ++i) {
-		MaterialMap             *ma = &m[i];
+	m_surfs.reserve(in.m.GetSize());
+	for (int i = 0; i < in.m.GetSize(); ++i) {
+		SurfaceMap              *ma = &m_surfs[Hash(i)];
 		const retro3d::Material *mb = &in.m[i];
 
-		ma->name = mb->name;
-		ma->cd   = mb->cd;
-		ma->td   = mb->td;
+		ma->name            = mb->name;
+		ma->diffuse_color   = mb->cd;
+		ma->diffuse_texture = mb->td;
 
 		for (int32_t f = 0; f < mb->f.GetSize(); ++f) {
-			FaceMap                  *fa = &ma->f[Hash(f)];
+			FaceMap                  *fa = &ma->faces[Hash(f)];
 			const retro3d::FaceIndex *fb = &mb->f[f];
 
 			fa->i.Create(fb->GetSize());
@@ -1451,6 +1551,10 @@ void retro3d::GeometryEditor::FromModel(const retro3d::Model &in, const retro3d:
 			}
 		}
 	}
+
+	UpdateHull();
+	Postprocess();
+	//MergeIdenticalVertices();
 }
 
 void retro3d::GeometryEditor::MergeApproximateVertices(const float DIST)
@@ -1459,10 +1563,10 @@ void retro3d::GeometryEditor::MergeApproximateVertices(const float DIST)
 	// BUG:  Does not work (a invalidated when b is erased?).
 
 	size_t hack_counter = 0; // HACK: Because I do not know how to get the second to last iterator in an unordered_map.
-	const size_t elem_count = v.size();
-	for (auto a = v.begin(); hack_counter++ < elem_count - 1; ++a) {
+	const size_t elem_count = m_vert.size();
+	for (auto a = m_vert.begin(); hack_counter++ < elem_count - 1; ++a) {
 		auto hack_offset = a; // HACK: Because I do not know how to return a+1 without actually incrementing a via ++a.
-		for (auto b = ++hack_offset; b != v.end(); ++b) {
+		for (auto b = ++hack_offset; b != m_vert.end(); ++b) {
 			int j = 0;
 			for (; j < 3; ++j) {
 				if (mmlIsApproxEqual(a->second[j], b->second[j], DIST) == false) {
@@ -1470,9 +1574,9 @@ void retro3d::GeometryEditor::MergeApproximateVertices(const float DIST)
 				}
 			}
 			if (j == 3) {
-				for (size_t mit = 0; mit < m.size(); ++mit) {
-					MaterialMap *mat = &m[mit];
-					for (auto fit = mat->f.begin(); fit != mat->f.end(); ++fit) {
+				for (size_t mit = 0; mit < m_surfs.size(); ++mit) {
+					SurfaceMap *mat = &m_surfs[mit];
+					for (auto fit = mat->faces.begin(); fit != mat->faces.end(); ++fit) {
 						FaceMap *face = &fit->second;
 						for (int i = 0; i < face->i.GetSize(); ++i) {
 							IndexMap *index = &face->i[i];
@@ -1488,9 +1592,9 @@ void retro3d::GeometryEditor::MergeApproximateVertices(const float DIST)
 
 	// TODO: Pass through all faces. Remove all duplicate indices in face. If face is left with 1 or 2 indices, remove face completely.
 	FaceMap new_face;
-	for (size_t mit = 0; mit < m.size(); ++mit) {
-		MaterialMap *mat = &m[mit];
-		for (auto fit = mat->f.begin(); fit != mat->f.end();) {
+	for (size_t mit = 0; mit < m_surfs.size(); ++mit) {
+		SurfaceMap *mat = &m_surfs[mit];
+		for (auto fit = mat->faces.begin(); fit != mat->faces.end();) {
 			FaceMap *face = &fit->second;
 			new_face.i.SetCapacity(face->i.GetSize());
 			new_face.i.Resize(0);
@@ -1503,18 +1607,61 @@ void retro3d::GeometryEditor::MergeApproximateVertices(const float DIST)
 			}
 
 			if (new_face.i.GetSize() < 3) {
-				fit = mat->f.erase(fit);
+				fit = mat->faces.erase(fit);
 			} else {
 				fit->second = new_face;
 				++fit;
 			}
 		}
 	}
+
+	Postprocess();
 }
 
 void retro3d::GeometryEditor::MergeIdenticalVertices( void )
 {
 	MergeApproximateVertices(0.0f);
+}
+
+template < typename type_t >
+void Reindex(std::unordered_map< uint64_t, type_t > &map, std::unordered_map< uint64_t, uint64_t > &key)
+{
+	std::unordered_map< uint64_t, type_t > out(map.size());
+	key.reserve(map.size());
+	uint64_t new_i = 0;
+	for (auto i = map.begin(); i != map.end(); ++i, ++new_i) {
+		key[i->first] = new_i;
+		out[new_i] = i->second;
+	}
+	map = std::move(out);
+}
+
+void retro3d::GeometryEditor::ReindexFaces(Map<FaceMap> &map, const Map<uint64_t> &v_key, const Map<uint64_t> &t_key, const Map<uint64_t> &n_key)
+{
+	for (auto f = map.begin(); f != map.end();) {
+		bool erase_face = false;
+		for (int i = 0; i < f->second.i.GetSize(); ++i) {
+			auto v = v_key.find(f->second.i[i].v);
+			if (v != v_key.end() || v->second == NO_INDEX) {
+				f->second.i[i].v = v_key.at(f->second.i[i].v);
+				if (f->second.i[i].t != NO_INDEX) {
+					auto t = t_key.find(f->second.i[i].t);
+					f->second.i[i].t = t != t_key.end() ? t->second : NO_INDEX;
+				}
+				if (f->second.i[i].n != NO_INDEX) {
+					auto n = n_key.find(f->second.i[i].n);
+					f->second.i[i].n = n != n_key.end() ? n->second : NO_INDEX;
+				}
+			} else {
+				// NOTE: This polygon is broken (contains negative positional indices). Remove it.
+				erase_face = true;
+				break;
+			}
+		}
+
+		if (erase_face == false) { ++f; }
+		else                     { f = map.erase(f); }
+	}
 }
 
 void retro3d::GeometryEditor::DefragAttributes( void )
@@ -1523,36 +1670,49 @@ void retro3d::GeometryEditor::DefragAttributes( void )
 	Map< mmlVector<2> > packed_t;
 	Map< mmlVector<3> > packed_n;
 
-	for (size_t mit = 0; mit < m.size(); ++mit) {
-		const MaterialMap *mat = &m[mit];
-		for (auto fit = mat->f.begin(); fit != mat->f.end(); ++fit) {
+	for (size_t mit = 0; mit < m_surfs.size(); ++mit) {
+		const SurfaceMap *mat = &m_surfs[mit];
+		for (auto fit = mat->faces.begin(); fit != mat->faces.end(); ++fit) {
 			const FaceMap *face = &fit->second;
 			for (int32_t vit = 0; vit < face->i.GetSize(); ++vit) {
 				const IndexMap *i = &face->i[vit];
-				packed_v[i->v] = v[i->v];
-				packed_t[i->t] = t[i->t];
-				packed_n[i->n] = n[i->n];
+				packed_v[i->v] = m_vert[i->v];
+				packed_t[i->t] = m_tcoord[i->t];
+				packed_n[i->n] = m_normal[i->n];
 			}
 		}
 	}
 
+	Map< uint64_t > reindex_v;
+	Map< uint64_t > reindex_t;
+	Map< uint64_t > reindex_n;
+
+	Reindex(packed_v, reindex_v);
+	Reindex(packed_t, reindex_t);
+	Reindex(packed_n, reindex_n);
+
+	for (auto s = m_surfs.begin(); s != m_surfs.end(); ++s) {
+		ReindexFaces(s->second.faces, reindex_v, reindex_t, reindex_n);
+	}
+	ReindexFaces(m_hull, reindex_v, reindex_t, reindex_n);
+
 #ifdef RETRO3D_DEBUG
-	std::cout << "Attributes defragmented: (v:" << v.size() << ",t:" << t.size() << ",n:" << n.size() << ") ->";
+	std::cout << "Attributes defragmented: (v:" << m_vert.size() << ",t:" << m_tcoord.size() << ",n:" << m_normal.size() << ") ->";
 #endif
 
-	v = packed_v;
-	t = packed_t;
-	n = packed_n;
+	m_vert = std::move(packed_v);
+	m_tcoord = std::move(packed_t);
+	m_normal = std::move(packed_n);
 
 #ifdef RETRO3D_DEBUG
-	std::cout << "(v:" << v.size() << ",t:" << t.size() << ",n:" << n.size() << "), ";
+	std::cout << "(v:" << m_vert.size() << ",t:" << m_tcoord.size() << ",n:" << m_normal.size() << "), ";
 #endif
 }
 
-void retro3d::GeometryEditor::AxisSubdivide(const float AXIS_SIZE, const float FP_EPSILON)
+void retro3d::GeometryEditor::AxisSubdivide(const float AXIS_SIZE)
 {
-	const mmlVector<3> min = aabb.GetMin();
-	const mmlVector<3> max = aabb.GetMax();
+	const mmlVector<3> min = m_aabb.GetMin();
+	const mmlVector<3> max = m_aabb.GetMax();
 
 	const int mins[3] = { mmlFloor(min[0]), mmlFloor(min[1]), mmlFloor(min[2]) };
 	const int maxs[3] = { mmlFloor(max[0]), mmlFloor(max[1]), mmlFloor(max[2]) };
@@ -1574,7 +1734,7 @@ void retro3d::GeometryEditor::AxisSubdivide(const float AXIS_SIZE, const float F
 		pos[i] = float(mins[i]) + AXIS_SIZE;
 		for (int n = 1; n <= chunks[i]; ++n) {
 			const retro3d::Plane plane(pos, normal);
-			left.Split(plane, &front, &back, FP_EPSILON);
+			left.Split(plane, &front, &back);
 			left = front;
 			final.AppendGeometry(back);
 			pos[i] += AXIS_SIZE;
@@ -1585,21 +1745,21 @@ void retro3d::GeometryEditor::AxisSubdivide(const float AXIS_SIZE, const float F
 
 	*this = final;
 
-	// Do not merge identical vertices automatically (let the user decide).
+	// NOTE: Do not merge identical vertices automatically (let the user decide).
 }
 
 void retro3d::GeometryEditor::Destroy( void )
 {
-	name = "";
-	v.clear();
-	t.clear();
-	n.clear();
-	m.clear();
-	lightmap.Delete();
-	aabb = retro3d::AABB();
+	m_name = "";
+	m_vert.clear();
+	m_tcoord.clear();
+	m_normal.clear();
+	m_surfs.clear();
+	m_lightmap.Delete();
+	m_aabb = retro3d::AABB();
 }
 
-void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::GeometryEditor *front, retro3d::GeometryEditor *back, const float FP_EPSILON)
+void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::GeometryEditor *front, retro3d::GeometryEditor *back)
 {
 	if (front == nullptr && back == nullptr) { return; }
 
@@ -1612,11 +1772,11 @@ void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::Geomet
 	// NOTE: Determine if the model is wholly on one side.
 	{
 		mmlVector<3> v[8];
-		aabb.GetCorners(v);
+		m_aabb.GetCorners(v);
 
 		uint32_t i = 0, o = 0, x = 0;
 		for (uint32_t n = 0; n < 8; ++n) {
-			switch (plane.DetermineSide(v[n], FP_EPSILON)) {
+			switch (plane.DetermineSide(v[n], m_FP_EPSILON)) {
 			case -1: ++o; break;
 			case  0: ++x; break;
 			case  1: ++i; break;
@@ -1636,25 +1796,25 @@ void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::Geomet
 	retro3d::Array<mmlVector<2>> clip_t, front_t, back_t;
 	retro3d::Array<mmlVector<3>> clip_n, front_n, back_n;
 
-	if (front != nullptr) { front->m.reserve(m.size()); }
-	if (back  != nullptr) { back->m.reserve(m.size()); }
+	if (front != nullptr) { front->m_surfs.reserve(m_surfs.size()); }
+	if (back  != nullptr) { back->m_surfs.reserve(m_surfs.size()); }
 
-	for (size_t mit = 0; mit < m.size(); ++mit) {
+	for (size_t mit = 0; mit < m_surfs.size(); ++mit) {
 
 		if (front != nullptr) {
-			front->m[mit].name = m[mit].name;
-			front->m[mit].cd = m[mit].cd;
-			front->m[mit].td = m[mit].td;
-			front->m[mit].f.reserve(m[mit].f.size());
+			front->m_surfs[mit].name            = m_surfs[mit].name;
+			front->m_surfs[mit].diffuse_color   = m_surfs[mit].diffuse_color;
+			front->m_surfs[mit].diffuse_texture = m_surfs[mit].diffuse_texture;
+			front->m_surfs[mit].faces.reserve(m_surfs[mit].faces.size());
 		}
 		if (back  != nullptr) {
-			back->m[mit].name = m[mit].name;
-			back->m[mit].cd = m[mit].cd;
-			back->m[mit].td = m[mit].td;
-			back->m[mit].f.reserve(m[mit].f.size());
+			back->m_surfs[mit].name            = m_surfs[mit].name;
+			back->m_surfs[mit].diffuse_color   = m_surfs[mit].diffuse_color;
+			back->m_surfs[mit].diffuse_texture = m_surfs[mit].diffuse_texture;
+			back->m_surfs[mit].faces.reserve(m_surfs[mit].faces.size());
 		}
 
-		for (auto fit = m[mit].f.begin(); fit != m[mit].f.end(); ++fit) {
+		for (auto fit = m_surfs[mit].faces.begin(); fit != m_surfs[mit].faces.end(); ++fit) {
 
 			// NOTE: Load the current face attributes into separate arrays.
 			clip_v.Create(fit->second.i.GetSize());
@@ -1666,28 +1826,28 @@ void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::Geomet
 
 			int32_t i = 0;
 			for (int32_t vit = 0; vit < fit->second.i.GetSize(); ++vit) {
-				clip_v[i] = v[fit->second.i[vit].v];
+				clip_v[i] = m_vert[fit->second.i[vit].v];
 				if (has_tcoords == true) {
-					if (fit->second.i[vit].t != NO_INDEX && has_tcoords == true) { clip_t[i] = t[fit->second.i[vit].t]; }
+					if (fit->second.i[vit].t != NO_INDEX && has_tcoords == true) { clip_t[i] = m_tcoord[fit->second.i[vit].t]; }
 					else { has_tcoords = false; }
 				}
 				if (has_normals == true) {
-					if (fit->second.i[vit].n != NO_INDEX && has_normals == true) { clip_n[i] = n[fit->second.i[vit].n]; }
+					if (fit->second.i[vit].n != NO_INDEX && has_normals == true) { clip_n[i] = m_normal[fit->second.i[vit].n]; }
 					else { has_normals = false; }
 				}
 				++i;
 			}
 
 			// NOTE: Clip the polygon's attributes.
-			plane.Clip(clip_v, clip_v, (front != nullptr) ? &front_v : nullptr, (back != nullptr) ? &back_v : nullptr, FP_EPSILON);
+			plane.Clip(clip_v, clip_v, (front != nullptr) ? &front_v : nullptr, (back != nullptr) ? &back_v : nullptr, m_FP_EPSILON);
 			if (has_tcoords == true) {
-				plane.Clip(clip_v, clip_t, (front != nullptr) ? &front_t : nullptr, (back != nullptr) ? &back_t : nullptr, FP_EPSILON);
+				plane.Clip(clip_v, clip_t, (front != nullptr) ? &front_t : nullptr, (back != nullptr) ? &back_t : nullptr, m_FP_EPSILON);
 			} else {
 				front_t.Free();
 				back_t.Free();
 			}
 			if (has_normals == true) {
-				plane.Clip(clip_v, clip_n, (front != nullptr) ? &front_n : nullptr, (back != nullptr) ? &back_n : nullptr, FP_EPSILON);
+				plane.Clip(clip_v, clip_n, (front != nullptr) ? &front_n : nullptr, (back != nullptr) ? &back_n : nullptr, m_FP_EPSILON);
 			} else {
 				front_n.Free();
 				back_n.Free();
@@ -1700,77 +1860,56 @@ void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::Geomet
 	}
 
 	if (front != nullptr) {
-		if (front->v.size() > 0) {
-			front->name     = name;
-			front->lightmap = lightmap;
-			front->UpdateAABB();
+		if (front->m_vert.size() > 0) {
+			front->m_name     = m_name;
+			front->m_lightmap = m_lightmap;
+			front->Postprocess();
 		} else {
 			front->Destroy();
 		}
 	}
 	if (back != nullptr) {
-		if (back->v.size() > 0) {
-			back->name     = name;
-			back->lightmap = lightmap;
-			back->UpdateAABB();
+		if (back->m_vert.size() > 0) {
+			back->m_name     = m_name;
+			back->m_lightmap = m_lightmap;
+			back->Postprocess();
 		} else {
 			back->Destroy();
 		}
 	}
 }
 
-bool retro3d::GeometryEditor::CalculateConvexity(const float FP_EPSILON) const
-{
-	// NOTE: Assertion = For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
-	size_t counter = 0;
-	for (auto f0 = f.begin(); counter++ < f.size() - 1; ++f0) {
-		const FaceMap *face0 = &f0->second;
-		const retro3d::Plane plane(v.at(face0->i[0].v), v.at(face0->i[1].v), v.at(face0->i[2].v));
-		auto f1 = f0;
-		++f1;
-		for (; f1 != f.end(); ++f1) {
-			const FaceMap *face1 = &f1->second;
-			const int32_t vert_count = face1->i.GetSize();
-			for (int32_t v0 = 0; v0 < vert_count; ++v0) {
-				const mmlVector<3> vcoord = v.at(face1->i[v0].v);
-				if (plane.DetermineSide(vcoord, FP_EPSILON) > 0) { return false; } // NOTE: Current vertex is in front of current plane, i.e. not convex.
-			}
-		}
-	}
-	return true; // NOTE: Passed all tests, i.e. convex.
-}
-
 void retro3d::GeometryEditor::Debug_PrintMaterials( void ) const
 {
-	for (size_t i = 0; i < m.size(); ++i) {
-		std::cout << m.at(i).name << std::endl;
-		std::cout << m.at(i).cd[0] << "," << m.at(i).cd[1] << "," << m.at(i).cd[2] << std::endl;
+	for (size_t i = 0; i < m_surfs.size(); ++i) {
+		std::cout << m_surfs.at(i).name << std::endl;
+		std::cout << m_surfs.at(i).diffuse_color[0] << "," << m_surfs.at(i).diffuse_color[1] << "," << m_surfs.at(i).diffuse_color[2] << std::endl;
 	}
 }
 
 void retro3d::GeometryEditor::AppendModel(const retro3d::Model &model, const retro3d::Transform &transform)
 {
-	const size_t v_size = v.size();
-	const size_t t_size = t.size();
-	const size_t n_size = n.size();
-	const size_t m_size = m.size();
+	const size_t v_size = m_vert.size();
+	const size_t t_size = m_tcoord.size();
+	const size_t n_size = m_normal.size();
+	const size_t m_size = m_surfs.size();
 	for (int i = 0; i < model.v.GetSize(); ++i) {
-		v[v_size + i] = transform.TransformPoint(model.v[i]);
+		m_vert[Hash(v_size + i)] = transform.TransformPoint(model.v[i]);
 	}
 	for (int i = 0; i < model.t.GetSize(); ++i) {
-		t[t_size + i] = model.t[i];
+		m_tcoord[Hash(t_size + i)] = model.t[i];
 	}
 	for (int i = 0; i < model.n.GetSize(); ++i) {
-		n[n_size + i] = transform.TransformNormal(model.n[i]);
+		m_normal[Hash(n_size + i)] = transform.TransformNormal(model.n[i]);
 	}
 	for (int i = 0; i < model.m.GetSize(); ++i) {
-		MaterialMap *mat = &m[m_size + i];
+		SurfaceMap *mat = &m_surfs[m_size + i];
 		mat->name = model.m[i].name;
-		mat->cd   = model.m[i].cd;
-		mat->td   = model.m[i].td;
-		mat->f.reserve(model.m[i].f.GetSize());
+		mat->diffuse_color   = model.m[i].cd;
+		mat->diffuse_texture = model.m[i].td;
+		mat->faces.reserve(model.m[i].f.GetSize());
 		for (int n = 0; n < model.m[i].f.GetSize(); ++n) {
-			FaceMap *face = &mat->f[n];
+			FaceMap *face = &mat->faces[n];
 			face->i.Resize(model.m[i].f[n].GetSize());
 			for (int j = 0; j < face->i.GetSize(); ++j) {
 				face->i[j].v = model.m[i].f[n][j].v >= 0 ? Hash(model.m[i].f[n][j].v + v_size) : NO_INDEX;
@@ -1780,40 +1919,40 @@ void retro3d::GeometryEditor::AppendModel(const retro3d::Model &model, const ret
 		}
 	}
 
-	UpdateAABB();
+	Postprocess();
 }
 
 void retro3d::GeometryEditor::AppendGeometry(const retro3d::GeometryEditor &geom, const retro3d::Transform &transform)
 {
-	const size_t v_size = v.size();
-	const size_t t_size = t.size();
-	const size_t n_size = n.size();
-	const size_t m_size = m.size();
+	const size_t v_size = m_vert.size();
+	const size_t t_size = m_tcoord.size();
+	const size_t n_size = m_normal.size();
+	const size_t m_size = m_surfs.size();
 
-	v.reserve(v_size + geom.v.size());
-	t.reserve(t_size + geom.t.size());
-	n.reserve(n_size + geom.n.size());
-	m.reserve(m_size + geom.m.size());
+	m_vert.reserve(v_size + geom.m_vert.size());
+	m_tcoord.reserve(t_size + geom.m_tcoord.size());
+	m_normal.reserve(n_size + geom.m_normal.size());
+	m_surfs.reserve(m_size + geom.m_surfs.size());
 
-	for (size_t i = 0; i < geom.v.size(); ++i) {
-		v[v_size + i] = transform.TransformPoint(geom.v.at(i));
+	for (size_t i = 0; i < geom.m_vert.size(); ++i) {
+		m_vert[v_size + i] = transform.TransformPoint(geom.m_vert.at(i));
 	}
-	for (size_t i = 0; i < geom.t.size(); ++i) {
-		t[t_size + i] = geom.t.at(i);
+	for (size_t i = 0; i < geom.m_tcoord.size(); ++i) {
+		m_tcoord[t_size + i] = geom.m_tcoord.at(i);
 	}
-	for (size_t i = 0; i < geom.n.size(); ++i) {
-		n[n_size + i] = transform.TransformNormal(geom.n.at(i));
+	for (size_t i = 0; i < geom.m_normal.size(); ++i) {
+		m_normal[n_size + i] = transform.TransformNormal(geom.m_normal.at(i));
 	}
-	for (size_t i = 0; i < geom.m.size(); ++i) {
-		MaterialMap *md = &m[m_size + i];
-		const MaterialMap *ms = &geom.m.at(i);
+	for (size_t i = 0; i < geom.m_surfs.size(); ++i) {
+		SurfaceMap *md = &m_surfs[m_size + i];
+		const SurfaceMap *ms = &geom.m_surfs.at(i);
 		md->name = ms->name;
-		md->cd   = ms->cd;
-		md->td   = ms->td;
-		md->f.reserve(ms->f.size());
-		for (size_t j = 0; j < ms->f.size(); ++j) {
-			FaceMap *fd = &md->f[j];
-			const FaceMap *fs = &ms->f.at(j);
+		md->diffuse_color   = ms->diffuse_color;
+		md->diffuse_texture = ms->diffuse_texture;
+		md->faces.reserve(ms->faces.size());
+		for (size_t j = 0; j < ms->faces.size(); ++j) {
+			FaceMap *fd = &md->faces[j];
+			const FaceMap *fs = &ms->faces.at(j);
 			fd->i.Resize(fs->i.GetSize());
 			for (int k = 0; k < fd->i.GetSize(); ++k) {
 				fd->i[k].v = fs->i[k].v != NO_INDEX ? v_size + fs->i[k].v : NO_INDEX;
@@ -1823,7 +1962,115 @@ void retro3d::GeometryEditor::AppendGeometry(const retro3d::GeometryEditor &geom
 		}
 	}
 
-	UpdateAABB();
+	Postprocess();
+}
+
+namespace impl
+{
+
+struct Face
+{
+	mmlVector<3> normal;
+	float        disc;
+	int32_t      I[3];
+};
+
+struct TwoSet
+{
+	int32_t a = -1;
+	int32_t b = -1;
+
+	void Insert(int32_t x) { (a == -1 ? a : b) = x; }
+	bool Contains(int32_t x) const { return a == x || b == x; }
+	void Erase(int32_t x) { (a == x ? a : b) = -1; }
+	int32_t GetSize( void ) const { return int32_t(a != -1) + int32_t(b != -1); }
+} E[1010][1010];
+
+impl::Face MakeFace(int32_t i, int32_t j, int32_t k, int32_t inside_i, const std::unordered_map<uint64_t, mmlVector<3>> &v)
+{
+	E[i][j].Insert(k);
+	E[i][k].Insert(j);
+	E[j][k].Insert(i);
+
+	impl::Face f;
+	f.I[0] = i;
+	f.I[1] = j;
+	f.I[2] = k;
+	f.normal = mmlCross(v.at(j) - v.at(i), v.at(k) - v.at(i));
+	f.disc = mmlDot(f.normal, v.at(i));
+	if (mmlDot(f.normal, v.at(inside_i)) > f.disc) {
+		f.normal = -f.normal;
+		f.disc = -f.disc;
+	}
+	return f;
+}
+
+}
+
+void retro3d::GeometryEditor::MakeConvex( void )
+{
+	// https://gist.github.com/msg555/4963794
+	// https://www.kiv.zcu.cz/site/documents/verejne/vyzkum/publikace/technicke-zpravy/2002/tr-2002-02.pdf
+
+	// Remove all concave points to speed up process.
+	RemoveConcavePoints();
+
+	m_surfs.clear();
+	m_surfs.reserve(1);
+	SurfaceMap *material = &m_surfs[0];
+	material->name = "Default";
+	material->diffuse_color = mmlVector<3>::Fill(1.0f);
+	material->diffuse_texture.Delete();
+
+	mtlList<impl::Face> faces;
+
+	// Construct an initial tetrahedron from the first 4 points in the geometry.
+	for (int32_t i = 0; i < 4; ++i) {
+		for (int32_t j = i + 1; j < 4; ++j) {
+			for (int32_t k = j + 1; k < 4; ++k) {
+				faces.AddLast(impl::MakeFace(i, j, k, 6 - i - j - k, m_vert));
+			}
+		}
+	}
+
+	// Add a point to the hull until no more points are available.
+	for (int32_t i = 4; i < (int32_t)m_vert.size(); ++i) {
+		mtlItem<impl::Face> *face = faces.GetFirst();
+		while (face != nullptr) {
+			if (mmlDot(face->GetItem().normal, m_vert.at(i)) > face->GetItem().disc) {
+				impl::E[face->GetItem().I[0]][face->GetItem().I[1]].Erase(face->GetItem().I[2]);
+				impl::E[face->GetItem().I[0]][face->GetItem().I[2]].Erase(face->GetItem().I[1]);
+				impl::E[face->GetItem().I[1]][face->GetItem().I[2]].Erase(face->GetItem().I[0]);
+				face = face->Remove();
+			} else {
+				face = face->GetNext();
+			}
+		}
+
+		//
+		face = faces.GetFirst();
+		const int32_t FaceCount = faces.GetSize();
+		for (int32_t j = 0; j < FaceCount; ++j) {
+			for (int32_t a = 0; a < 3; ++a) {
+				for (int32_t b = a + 1; b < 3; ++b) {
+					const int32_t c = 3 - a - b;
+					if (impl::E[face->GetItem().I[a]][face->GetItem().I[b]].GetSize() == 2) {
+						continue;
+					}
+					faces.AddLast(impl::MakeFace(face->GetItem().I[a], face->GetItem().I[b], i, face->GetItem().I[c], m_vert));
+				}
+			}
+			face = face->GetNext();
+		}
+	}
+
+	m_hull = m_surfs[0].faces;
+	Postprocess();
+}
+
+bool retro3d::GeometryEditor::IsConvex( void ) const
+{
+	return m_is_convex;
 }
 
 retro3d::DisplayModel::GeometryQueue::GeometryQueue( void ) : m_data(nullptr), m_items(nullptr), m_stack(nullptr), m_item_count(0), m_max_items(0), m_max_stack(0), m_stack_count(0)
@@ -2300,7 +2547,7 @@ void retro3d::DisplayModel::AllocateSpace(const retro3d::DisplayModel::ModelData
 	const uint32_t pdata_byte_size = sizeof(GeometryNode) * node_count + sizeof(Surface) * surface_count;
 	const uint32_t vdata_byte_size = sizeof(Polygon) * poly_count + sizeof(DisplayModel::Vertex) * vertex_count;
 	const uint32_t byte_size = pdata_byte_size + vdata_byte_size;
-	if (byte_size > std::numeric_limits<int>::max()) {
+	if (byte_size > (uint32_t)std::numeric_limits<int>::max()) {
 		std::cout << "[DisplayModel.AllocateSpace:ERROR] Too large array. ";
 		return;
 	}
