@@ -5,7 +5,7 @@
 #include "common/MiniLib/MTL/mtlList.h"
 #include "common/MiniLib/MTL/mtlPointer.h"
 #include "common/MiniLib/MML/mmlRandom.h"
-#include "common/retro_timer.h"
+#include "common/retro_time.h"
 #include "frontend/retro_render_device.h"
 #include "ecs/retro_component.h"
 #include "ecs/retro_system.h"

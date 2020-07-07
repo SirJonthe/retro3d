@@ -1234,20 +1234,20 @@ void retro3d::FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud
 	}
 }
 
-uint64_t retro3d::GeometryEditor::Hash(int32_t a)
+uint64_t retro3d::MeshEditor::Hash(int32_t a)
 {
 	const uint32_t ua = a >= 0 ? *reinterpret_cast<uint32_t*>(&a) : NO_INDEX;
 	return uint64_t(ua);
 }
 
-uint64_t retro3d::GeometryEditor::Hash(int32_t a, int32_t b)
+uint64_t retro3d::MeshEditor::Hash(int32_t a, int32_t b)
 {
 	// NOTE: A unique hash of two indices where h(a,b) = h(b,a)
 	if (a < 0 || b < 0) { return uint64_t(NO_INDEX); }
 	return (Hash(mmlMin(a, b)) << 32) | Hash(mmlMax(a, b));
 }
 
-void retro3d::GeometryEditor::StoreClippedFace(retro3d::GeometryEditor *out, const retro3d::GeometryEditor::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
+void retro3d::MeshEditor::StoreClippedFace(retro3d::MeshEditor *out, const retro3d::MeshEditor::FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n)
 {
 	FaceMap *out_face = &out->m_surfs[current_material_index].faces[Hash(out->m_surfs[current_material_index].faces.size())]; // NOTE: Adding an element last to the table.
 	out_face->i.Create(clipped_v.GetSize());
@@ -1314,7 +1314,7 @@ void retro3d::GeometryEditor::StoreClippedFace(retro3d::GeometryEditor *out, con
 	}
 }
 
-retro3d::AABB retro3d::GeometryEditor::CalculateAABB( void ) const
+retro3d::AABB retro3d::MeshEditor::CalculateAABB( void ) const
 {
 	retro3d::AABB aabb;
 	if (m_vert.size() > 0) {
@@ -1331,17 +1331,17 @@ retro3d::AABB retro3d::GeometryEditor::CalculateAABB( void ) const
 	return aabb;
 }
 
-mmlVector<3> retro3d::GeometryEditor::CalculateCentroid( void ) const
+mmlVector<3> retro3d::MeshEditor::CalculateCentroid( void ) const
 {
-	const float INV_SIZE = 1.0f / m_vert.size();
-	mmlVector<3> centroid = mmlVector<3>::Fill(1.0f);
-	for (auto it = m_vert.begin(); it != m_vert.end(); ++it) {
-		centroid += it->second * INV_SIZE;
+	mmlVector<3> c = mmlVector<3>::Fill(0.0f);
+	for (auto i = m_vert.begin(); i != m_vert.end(); ++i) {
+		c += i->second;
 	}
-	return centroid;
+	c /= float(m_vert.size());
+	return c;
 }
 
-bool retro3d::GeometryEditor::CalculateConvexity( void ) const
+bool retro3d::MeshEditor::CalculateConvexity( void ) const
 {
 	// NOTE: Assertion = For a space to be convex, all polygons must be BEHIND or ON all planes made out of the polygons.
 	size_t counter = 0;
@@ -1362,17 +1362,16 @@ bool retro3d::GeometryEditor::CalculateConvexity( void ) const
 	return true; // NOTE: Passed all tests, i.e. convex.
 }
 
-void retro3d::GeometryEditor::Postprocess( void )
+void retro3d::MeshEditor::Postprocess( void )
 {
 	DefragAttributes();
 
 	m_aabb      = CalculateAABB();
 	m_centroid  = CalculateCentroid();
-	m_center    = m_aabb.GetCenter();
 	m_is_convex = CalculateConvexity();
 }
 
-uint64_t retro3d::GeometryEditor::FindExtremeVertexIndexAlongDirection(const mmlVector<3> &search_dir) const
+uint64_t retro3d::MeshEditor::FindExtremeVertexIndexAlongDirection(const mmlVector<3> &search_dir) const
 {
 	if (m_vert.size() == 0) { return NO_INDEX; }
 
@@ -1390,21 +1389,25 @@ uint64_t retro3d::GeometryEditor::FindExtremeVertexIndexAlongDirection(const mml
 	return max_i;
 }
 
-void retro3d::GeometryEditor::RemoveConcavePoints( void )
+void retro3d::MeshEditor::RemoveConcavePoints( void )
 {
+	if (m_vert.size() < 4) { return; } // NOTE: None of the points can be concave.
+
 	Map< mmlVector<3> > convex_points;
 	convex_points.reserve(size_t(m_vert.size()));
-	for (size_t i = 0; i < m_vert.size(); ++i) {
-		const int32_t extreme_index = FindExtremeVertexIndexAlongDirection(retro3d::NormalFromAToB(m_centroid, m_vert[i]));
-		convex_points[extreme_index] = m_vert[extreme_index];
+
+	for (auto i = m_vert.begin(); i != m_vert.end(); ++i) {
+		const uint64_t extreme_index = FindExtremeVertexIndexAlongDirection(retro3d::NormalFromAToB(m_centroid, i->second));
+		convex_points[extreme_index] = m_vert.at(extreme_index);
 	}
 
 	m_vert = std::move(convex_points);
 	m_centroid = CalculateCentroid();
-	DefragAttributes();
+
+//	DefragAttributes(); // NOTE: All of the faces in the convex_box model share a point that is non-convex, meaning all faces will be removed, and later all vertices too.
 }
 
-void retro3d::GeometryEditor::UpdateHull( void )
+void retro3d::MeshEditor::UpdateHull( void )
 {
 	size_t total_hull_size = 0;
 	for (auto s = m_surfs.begin(); s != m_surfs.end(); ++s) {
@@ -1421,10 +1424,10 @@ void retro3d::GeometryEditor::UpdateHull( void )
 	}
 }
 
-retro3d::GeometryEditor::GeometryEditor(const float FP_EPSILON) : m_centroid(mmlVector<3>::Fill(0.0f)), m_center(mmlVector<3>::Fill(0.0f)), m_is_convex(false), m_FP_EPSILON(FP_EPSILON)
+retro3d::MeshEditor::MeshEditor(const float FP_EPSILON) : m_centroid(mmlVector<3>::Fill(0.0f)), m_is_convex(false), m_FP_EPSILON(FP_EPSILON)
 {}
 
-void retro3d::GeometryEditor::ToModel(retro3d::Model &out)
+void retro3d::MeshEditor::ToModel(retro3d::Model &out)
 {
 	int32_t i;
 	Map<int32_t> v_table;
@@ -1509,7 +1512,7 @@ void retro3d::GeometryEditor::ToModel(retro3d::Model &out)
 	}
 }
 
-void retro3d::GeometryEditor::FromModel(const retro3d::Model &in, const retro3d::Transform &transform)
+void retro3d::MeshEditor::FromModel(const retro3d::Model &in, const retro3d::Transform &transform)
 {
 	// NOTE, TODO, BUG: This code does not handle negative indices. Unsure how this will affect converting the mapped model back to linear format.
 
@@ -1552,12 +1555,11 @@ void retro3d::GeometryEditor::FromModel(const retro3d::Model &in, const retro3d:
 		}
 	}
 
-	UpdateHull();
-	Postprocess();
+	Postprocess(); // Disalbe this if MergeIdenticalVertices is called
 	//MergeIdenticalVertices();
 }
 
-void retro3d::GeometryEditor::MergeApproximateVertices(const float DIST)
+void retro3d::MeshEditor::MergeApproximateVertices(const float DIST)
 {
 	// NOTE: Remove all similar vertices in the model by merging the faces together.
 	// BUG:  Does not work (a invalidated when b is erased?).
@@ -1618,7 +1620,7 @@ void retro3d::GeometryEditor::MergeApproximateVertices(const float DIST)
 	Postprocess();
 }
 
-void retro3d::GeometryEditor::MergeIdenticalVertices( void )
+void retro3d::MeshEditor::MergeIdenticalVertices( void )
 {
 	MergeApproximateVertices(0.0f);
 }
@@ -1636,7 +1638,7 @@ void Reindex(std::unordered_map< uint64_t, type_t > &map, std::unordered_map< ui
 	map = std::move(out);
 }
 
-void retro3d::GeometryEditor::ReindexFaces(Map<FaceMap> &map, const Map<uint64_t> &v_key, const Map<uint64_t> &t_key, const Map<uint64_t> &n_key)
+void retro3d::MeshEditor::ReindexFaces(Map<FaceMap> &map, const Map<uint64_t> &v_key, const Map<uint64_t> &t_key, const Map<uint64_t> &n_key)
 {
 	for (auto f = map.begin(); f != map.end();) {
 		bool erase_face = false;
@@ -1664,11 +1666,44 @@ void retro3d::GeometryEditor::ReindexFaces(Map<FaceMap> &map, const Map<uint64_t
 	}
 }
 
-void retro3d::GeometryEditor::DefragAttributes( void )
+void retro3d::MeshEditor::DefragAttributes( void )
 {
+	// Remove faces that refer to attributes that do not exist.
+	size_t face_total = 0;
+	size_t erased_faces = 0;
+	for (auto s = m_surfs.begin(); s != m_surfs.end(); ++s) {
+		face_total += s->second.faces.size();
+		for (auto f = s->second.faces.begin(); f != s->second.faces.end();) {
+			bool erase_face = false;
+			for (int i = 0; i < f->second.i.GetSize(); ++i) {
+				IndexMap *n = &f->second.i[i];
+				auto vi = m_vert.find(n->v);
+				auto ti = m_tcoord.find(n->t);
+				auto ni = m_normal.find(n->n);
+				if ((vi == m_vert.end() || vi->first == NO_INDEX) || (ti == m_tcoord.end() && n->t != NO_INDEX) || (ni == m_normal.end() && n->n != NO_INDEX)) {
+					erase_face = true;
+					break;
+				}
+			}
+
+			if (erase_face == false) { ++f; }
+			else                     { f = s->second.faces.erase(f); ++erased_faces; }
+		}
+	}
+	std::cout << "erased_faces=" << erased_faces << "/" << face_total << ", " << std::flush;
+
+	// Remove vertex attributes that are not references in a face.
 	Map< mmlVector<3> > packed_v;
 	Map< mmlVector<2> > packed_t;
 	Map< mmlVector<3> > packed_n;
+
+	packed_v.reserve(m_vert.size());
+	packed_t.reserve(m_tcoord.size());
+	packed_n.reserve(m_normal.size());
+
+	size_t original_v_size = m_vert.size();
+	size_t original_t_size = m_tcoord.size();
+	size_t original_n_size = m_normal.size();
 
 	for (size_t mit = 0; mit < m_surfs.size(); ++mit) {
 		const SurfaceMap *mat = &m_surfs[mit];
@@ -1676,13 +1711,17 @@ void retro3d::GeometryEditor::DefragAttributes( void )
 			const FaceMap *face = &fit->second;
 			for (int32_t vit = 0; vit < face->i.GetSize(); ++vit) {
 				const IndexMap *i = &face->i[vit];
-				packed_v[i->v] = m_vert[i->v];
-				packed_t[i->t] = m_tcoord[i->t];
-				packed_n[i->n] = m_normal[i->n];
+				packed_v[i->v] = m_vert.at(i->v);
+				packed_t[i->t] = m_tcoord.at(i->t);
+				packed_n[i->n] = m_normal.at(i->n);
 			}
 		}
 	}
+	std::cout << "erased_vert=" << original_v_size - packed_v.size() << "/" << original_v_size << ", ";
+	std::cout << "erased_tcoord=" << original_t_size - packed_t.size() << "/" << original_t_size << ", ";
+	std::cout << "erased_normal=" << original_n_size - packed_n.size() << "/" << original_n_size << ", " << std::flush;
 
+	// Reindex the remaining vertex attributes 0-n
 	Map< uint64_t > reindex_v;
 	Map< uint64_t > reindex_t;
 	Map< uint64_t > reindex_n;
@@ -1691,25 +1730,27 @@ void retro3d::GeometryEditor::DefragAttributes( void )
 	Reindex(packed_t, reindex_t);
 	Reindex(packed_n, reindex_n);
 
+	// Make remaining faces point to new vertex indices.
 	for (auto s = m_surfs.begin(); s != m_surfs.end(); ++s) {
 		ReindexFaces(s->second.faces, reindex_v, reindex_t, reindex_n);
 	}
-	ReindexFaces(m_hull, reindex_v, reindex_t, reindex_n);
+	UpdateHull();
 
-#ifdef RETRO3D_DEBUG
-	std::cout << "Attributes defragmented: (v:" << m_vert.size() << ",t:" << m_tcoord.size() << ",n:" << m_normal.size() << ") ->";
-#endif
+//#ifdef RETRO3D_DEBUG
+//	std::cout << "Attributes defragmented: (v:" << m_vert.size() << ",t:" << m_tcoord.size() << ",n:" << m_normal.size() << ") ->";
+//#endif
 
+	// Store the new attributes.
 	m_vert = std::move(packed_v);
 	m_tcoord = std::move(packed_t);
 	m_normal = std::move(packed_n);
 
-#ifdef RETRO3D_DEBUG
-	std::cout << "(v:" << m_vert.size() << ",t:" << m_tcoord.size() << ",n:" << m_normal.size() << "), ";
-#endif
+//#ifdef RETRO3D_DEBUG
+//	std::cout << "(v:" << m_vert.size() << ",t:" << m_tcoord.size() << ",n:" << m_normal.size() << "), ";
+//#endif
 }
 
-void retro3d::GeometryEditor::AxisSubdivide(const float AXIS_SIZE)
+void retro3d::MeshEditor::AxisSubdivide(const float AXIS_SIZE)
 {
 	const mmlVector<3> min = m_aabb.GetMin();
 	const mmlVector<3> max = m_aabb.GetMax();
@@ -1723,9 +1764,9 @@ void retro3d::GeometryEditor::AxisSubdivide(const float AXIS_SIZE)
 		int(float(mmlCeil(float(maxs[0] - mins[0]))) / AXIS_SIZE)
 	};
 
-	retro3d::GeometryEditor final;
-	retro3d::GeometryEditor left = *this;
-	retro3d::GeometryEditor front, back;
+	retro3d::MeshEditor final;
+	retro3d::MeshEditor left = *this;
+	retro3d::MeshEditor front, back;
 
 	mmlVector<3> normal = mmlVector<3>::Fill(0.0f);
 	mmlVector<3> pos = normal;
@@ -1748,7 +1789,7 @@ void retro3d::GeometryEditor::AxisSubdivide(const float AXIS_SIZE)
 	// NOTE: Do not merge identical vertices automatically (let the user decide).
 }
 
-void retro3d::GeometryEditor::Destroy( void )
+void retro3d::MeshEditor::Destroy( void )
 {
 	m_name = "";
 	m_vert.clear();
@@ -1759,7 +1800,7 @@ void retro3d::GeometryEditor::Destroy( void )
 	m_aabb = retro3d::AABB();
 }
 
-void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::GeometryEditor *front, retro3d::GeometryEditor *back)
+void retro3d::MeshEditor::Split(const retro3d::Plane &plane, retro3d::MeshEditor *front, retro3d::MeshEditor *back)
 {
 	if (front == nullptr && back == nullptr) { return; }
 
@@ -1879,7 +1920,7 @@ void retro3d::GeometryEditor::Split(const retro3d::Plane &plane, retro3d::Geomet
 	}
 }
 
-void retro3d::GeometryEditor::Debug_PrintMaterials( void ) const
+void retro3d::MeshEditor::Debug_PrintMaterials( void ) const
 {
 	for (size_t i = 0; i < m_surfs.size(); ++i) {
 		std::cout << m_surfs.at(i).name << std::endl;
@@ -1887,7 +1928,7 @@ void retro3d::GeometryEditor::Debug_PrintMaterials( void ) const
 	}
 }
 
-void retro3d::GeometryEditor::AppendModel(const retro3d::Model &model, const retro3d::Transform &transform)
+void retro3d::MeshEditor::AppendModel(const retro3d::Model &model, const retro3d::Transform &transform)
 {
 	const size_t v_size = m_vert.size();
 	const size_t t_size = m_tcoord.size();
@@ -1922,7 +1963,7 @@ void retro3d::GeometryEditor::AppendModel(const retro3d::Model &model, const ret
 	Postprocess();
 }
 
-void retro3d::GeometryEditor::AppendGeometry(const retro3d::GeometryEditor &geom, const retro3d::Transform &transform)
+void retro3d::MeshEditor::AppendGeometry(const retro3d::MeshEditor &geom, const retro3d::Transform &transform)
 {
 	const size_t v_size = m_vert.size();
 	const size_t t_size = m_tcoord.size();
@@ -2007,13 +2048,15 @@ impl::Face MakeFace(int32_t i, int32_t j, int32_t k, int32_t inside_i, const std
 
 }
 
-void retro3d::GeometryEditor::MakeConvex( void )
+void retro3d::MeshEditor::MakeConvex( void )
 {
 	// https://gist.github.com/msg555/4963794
 	// https://www.kiv.zcu.cz/site/documents/verejne/vyzkum/publikace/technicke-zpravy/2002/tr-2002-02.pdf
 
 	// Remove all concave points to speed up process.
 	RemoveConcavePoints();
+
+	if (m_vert.size() < 4) { return; }
 
 	m_surfs.clear();
 	m_surfs.reserve(1);
@@ -2068,7 +2111,7 @@ void retro3d::GeometryEditor::MakeConvex( void )
 	Postprocess();
 }
 
-bool retro3d::GeometryEditor::IsConvex( void ) const
+bool retro3d::MeshEditor::IsConvex( void ) const
 {
 	return m_is_convex;
 }

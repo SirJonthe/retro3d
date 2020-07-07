@@ -495,7 +495,7 @@ void retro3d::Engine::Reset( void )
 	m_time = 0.0;
 	m_timer.Stop();
 	m_timer.Reset();
-	m_timer.SetTempo(1.0, retro3d::Timer::BeatsPerSecond);
+	m_timer.SetTempo(1.0, retro3d::RealTimeTimer::TicksPerSecond);
 	m_timer.Start();
 }
 

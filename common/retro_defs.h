@@ -43,6 +43,8 @@ num_t Jerklerp(const num_t &a, const num_t &b, real_t x)
 	return Accelerp(b, a, x);
 }
 
+typedef void (*Procedure)( void );
+
 }
 
 #endif // RETRO_DEFS_H

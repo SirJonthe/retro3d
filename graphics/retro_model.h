@@ -211,7 +211,7 @@ void         FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud,
 	retro3d::Array< Surface > surfaces;
 };*/
 
-class GeometryEditor
+class MeshEditor
 {
 private:
 	template < typename type_t >
@@ -231,13 +231,14 @@ private:
 private:
 	std::string                 m_name;
 	Map< mmlVector<3> >         m_vert;
+	Map< mmlVector<3> >         m_convex_vert;
 	Map< mmlVector<2> >         m_tcoord;
 	Map< mmlVector<3> >         m_normal;
 	Map<SurfaceMap>             m_surfs;
 	Map<FaceMap>                m_hull;
+	Map<FaceMap>                m_convex_hull;
 	mtlShared<retro3d::Texture> m_lightmap;
 	mmlVector<3>                m_centroid;
-	mmlVector<3>                m_center;
 	retro3d::AABB               m_aabb;
 	bool                        m_is_convex;
 	float                       m_FP_EPSILON;
@@ -245,7 +246,7 @@ private:
 private:
 	static uint64_t Hash(int32_t a);
 	static uint64_t Hash(int32_t a, int32_t b);
-	void            StoreClippedFace(GeometryEditor *out, const FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n);
+	void            StoreClippedFace(MeshEditor *out, const FaceMap &unclipped_index, int32_t current_material_index, const retro3d::Array< mmlVector<3> > &clipped_v, const retro3d::Array< mmlVector<2> > &clipped_t, const retro3d::Array< mmlVector<3> > &clipped_n);
 	retro3d::AABB   CalculateAABB( void ) const;
 	mmlVector<3>    CalculateCentroid( void ) const;
 	bool            CalculateConvexity( void ) const;
@@ -256,7 +257,7 @@ private:
 	static void     ReindexFaces(Map<FaceMap> &map, const Map<uint64_t> &v_key, const Map<uint64_t> &t_key, const Map<uint64_t> &n_key);
 
 public:
-	explicit GeometryEditor(const float FP_EPSILON = std::numeric_limits<float>::epsilon());
+	explicit MeshEditor(const float FP_EPSILON = std::numeric_limits<float>::epsilon());
 
 	// Output the geometry to a generic linear model format.
 	void ToModel(retro3d::Model &out);
@@ -292,7 +293,7 @@ public:
 	void Destroy( void );
 
 	// Divide geometry by a plane and return the front and back as separate models.
-	void Split(const retro3d::Plane &plane, retro3d::GeometryEditor *front, retro3d::GeometryEditor *back);
+	void Split(const retro3d::Plane &plane, retro3d::MeshEditor *front, retro3d::MeshEditor *back);
 
 	// Print materials.
 	void Debug_PrintMaterials( void ) const;
@@ -301,7 +302,7 @@ public:
 	void AppendModel(const retro3d::Model &model, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
 
 	// Add geometry from another geometry editor to this editor.
-	void AppendGeometry(const retro3d::GeometryEditor &geom, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
+	void AppendGeometry(const retro3d::MeshEditor &geom, const retro3d::Transform &transform = mmlMatrix<4,4>::Identity());
 
 	// Removes concave points and faces from the editor and stitches holes back together (creates a convex model). NOTE: All surfaces will be baked into one.
 	void MakeConvex( void );
