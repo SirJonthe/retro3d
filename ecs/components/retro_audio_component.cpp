@@ -2,6 +2,8 @@
 #include "../../retro3d.h"
 #include "../components/retro_transform_component.h"
 
+namespace retro3d { retro_register_component(AudioComponent) }
+
 void retro3d::AudioComponent::OnUpdate( void )
 {
 	if (IsPlaying() == true) {

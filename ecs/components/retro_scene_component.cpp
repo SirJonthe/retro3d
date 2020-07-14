@@ -2,6 +2,8 @@
 #include "retro_render_component.h"
 #include "../retro_entity.h"
 
+namespace retro3d { retro_register_component(SceneComponent) }
+
 retro_component(C_SceneConstructor)
 {
 	// object that waits for a render component to be added to the object so that sectoring can be done

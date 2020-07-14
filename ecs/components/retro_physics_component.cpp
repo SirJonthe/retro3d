@@ -2,6 +2,8 @@
 #include "../retro_entity.h"
 #include "retro_transform_component.h"
 
+namespace retro3d { retro_register_component(PhysicsComponent) }
+
 void retro3d::PhysicsComponent::OnSpawn( void )
 {
 	AttachTransform(GetObject()->AddComponent<retro3d::TransformComponent>()->GetTransform());

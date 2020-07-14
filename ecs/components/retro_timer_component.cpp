@@ -1,5 +1,7 @@
 #include "retro_timer_component.h"
 
+namespace retro3d { retro_register_component(TimerComponent) }
+
 #define MS_PER_SEC 1000
 
 void retro3d::TimerComponent::OnUpdate( void )

@@ -487,16 +487,29 @@ void retro3d::Engine::Reset( void )
 {
 	AddRequiredSystems();
 
+	m_camera = &m_default_camera;
+
 	m_rand.SetSeed(m_input->GetProgramTimeMS());
 	m_is_running = true;
 	m_quit = false;
 	m_frame = 0;
 	m_delta_time = m_min_delta_time;
 	m_time = 0.0;
-	m_timer.Stop();
-	m_timer.Reset();
-	m_timer.SetTempo(1.0, retro3d::RealTimeTimer::TicksPerSecond);
-	m_timer.Start();
+
+	m_time_scale = 1.0;
+
+	m_refresh_timer.Pause();
+	m_refresh_timer.Reset();
+	m_refresh_timer.SetTickRate(1, 1_s);
+	m_refresh_timer.Start();
+
+	m_game_timer.Pause();
+	m_game_timer.Reset();
+	m_game_timer.SetTickRate(1, retro3d::Time(uint32_t(1000 * m_time_scale)));
+	m_game_timer.Start();
+
+	m_system_timer.Reset();
+	m_system_timer.Start();
 }
 
 void retro3d::Engine::UpdateDevices( void )
@@ -691,7 +704,7 @@ void retro3d::Engine::DestroyEntities( void )
 
 void retro3d::Engine::TickGameTime( void )
 {
-	m_delta_time = mmlMin(m_timer.GetTime() * m_time_scale, m_max_delta_time);
+	m_delta_time = mmlMin(m_refresh_timer.GetScaledTime().GetFloatSeconds() * m_time_scale, m_max_delta_time);
 	m_time += m_delta_time;
 	auto i = m_entities.GetFirst();
 	while (i != nullptr) {
@@ -725,11 +738,11 @@ void retro3d::Engine::DetectTermination( void )
 
 void retro3d::Engine::Sleep( void )
 {
-	double frame_time = m_timer.GetTime();
+	double frame_time = m_refresh_timer.GetScaledTime().GetFloatSeconds();
 	if (frame_time < m_min_delta_time) {
 		m_input->Sleep(uint64_t((m_min_delta_time - frame_time) * 1000.0));
 	}
-	m_timer.Reset();
+	m_refresh_timer.Reset();
 }
 
 void retro3d::Engine::Tick( void )
@@ -989,6 +1002,11 @@ void retro3d::Engine::Run( void )
 void retro3d::Engine::Quit( void )
 {
 	m_quit = true;
+}
+
+retro3d::RealTimeTimer retro3d::Engine::SpawnChildTimer(uint32_t num_ticks, retro3d::Time over_time) const
+{
+	return m_game_timer.SpawnChild(num_ticks, over_time);
 }
 
 bool retro3d::Engine::FindEntity(const std::string &name, mtlList<retro3d::Entity*> &results, bool search_inactive)

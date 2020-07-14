@@ -2,6 +2,8 @@
 #include "retro_transform_component.h"
 #include "../retro_entity.h"
 
+namespace retro3d { retro_register_component(ColliderComponent) }
+
 void retro3d::ColliderComponent::OnSpawn( void )
 {
 	m_collider->AttachTransform(GetObject()->AddComponent<retro3d::TransformComponent>()->GetTransform());

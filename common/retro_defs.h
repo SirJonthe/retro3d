@@ -45,6 +45,9 @@ num_t Jerklerp(const num_t &a, const num_t &b, real_t x)
 
 typedef void (*Procedure)( void );
 
+template < typename type_t >
+using Schematic = void (*)(type_t*);
+
 }
 
 #endif // RETRO_DEFS_H

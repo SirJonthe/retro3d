@@ -3,6 +3,8 @@
 #include "../retro_entity.h"
 #include "../../common/MiniLib/MML/mmlMath.h"
 
+namespace retro3d { retro_register_component(RenderComponent) }
+
 void retro3d::RenderComponent::OnSpawn( void )
 {
 	m_transform = GetObject()->AddComponent<retro3d::TransformComponent>()->GetTransform();

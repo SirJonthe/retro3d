@@ -41,10 +41,12 @@ private:
 	mtlList< retro3d::Entity* >  m_entities;
 	Systems                      m_systems;
 	Systems                      m_systems_pending_init;
-	retro3d::Timer               m_timer;
+	retro3d::RealTimeTimer       m_refresh_timer; // keeps track of the amount of time a frame takes to finish, and sleeps thread (if applicable)
+	retro3d::RealTimeTimer       m_game_timer; // scaled time, 1 s on clock = 1/m_time_scale s in real life
+	retro3d::RealTimeTimer       m_system_timer; // real time, 1 s on clock = 1 s in real life
 	uint64_t                     m_frame;
 	mmlRandom                    m_rand;
-	double                       m_time; // should not be floating point...
+	double                       m_time; // should not be floating point... [replace with m_game_timer and m_system_timer]
 	double                       m_delta_time;
 	double                       m_min_delta_time;
 	double                       m_max_delta_time;
@@ -138,6 +140,8 @@ public:
 	template < typename system_t > void            RemoveSystem( void );
 	template < typename system_t > system_t       *GetSystem( void );
 	template < typename system_t > const system_t *GetSystem( void ) const;
+
+	retro3d::RealTimeTimer SpawnChildTimer(uint32_t num_ticks = 1, retro3d::Time over_time = 1_s) const;
 
 public:
 	static mtlShared<retro3d::Model>   DefaultModel( void );

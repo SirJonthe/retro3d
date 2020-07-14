@@ -3,6 +3,7 @@
 
 #include "../retro_entity.h"
 #include "../../common/retro_defs.h"
+#include "../../common/retro_time.h"
 
 namespace retro3d
 {
@@ -21,7 +22,7 @@ protected:
 public:
 	DelayedCall( void );
 
-	void SetProcedure(retro3d::Procedure procedure, uint64_t time_ms);
+	void SetProcedure(retro3d::Procedure procedure, retro3d::Time time, bool scale_time);
 };
 
 }

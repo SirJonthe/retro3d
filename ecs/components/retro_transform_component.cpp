@@ -1,5 +1,7 @@
 #include "retro_transform_component.h"
 
+namespace retro3d { retro_register_component(TransformComponent) }
+
 void retro3d::TransformComponent::OnUpdate( void )
 {
 	m_old_transform = m_transform->GetFinalMatrix();

@@ -22,9 +22,18 @@ void retro3d::DelayedCall::OnDestroy( void )
 retro3d::DelayedCall::DelayedCall( void ) : mtlInherit(this), m_timer(), m_procedure(nullptr)
 {}
 
-void retro3d::DelayedCall::SetProcedure(retro3d::Procedure procedure, uint64_t time)
+void retro3d::DelayedCall::SetProcedure(retro3d::Procedure procedure, retro3d::Time time, bool scale_time)
 {
 	m_procedure = procedure;
-	m_timer.SetTickRate(retro3d::Time::FloatTime(time), retro3d::RealTimeTimer::Units::SecondsPerTick);
+
+	if (scale_time == false) {
+		m_timer.Pause();
+		m_timer.Reset();
+		m_timer.SetParent(nullptr);
+		m_timer.SetTickRate(1, time);
+	} else {
+		m_timer = GetEngine()->SpawnChildTimer(1, time);
+	}
+
 	m_timer.Start();
 }
