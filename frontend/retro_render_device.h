@@ -65,6 +65,10 @@ public:
 	virtual RenderDevice &RenderText(int64_t n, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;
 	virtual RenderDevice &RenderText(uint64_t n, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;
 	virtual RenderDevice &RenderText(double n, const mmlVector<3> &color = mmlVector<3>::Fill(1.0f)) = 0;
+	virtual RenderDevice &RenderText(const std::string &str, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color) = 0;
+	virtual RenderDevice &RenderText(int64_t n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color) = 0;
+	virtual RenderDevice &RenderText(uint64_t n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color) = 0;
+	virtual RenderDevice &RenderText(double n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color) = 0;
 	virtual void FinishRender(bool update_video_out = true) = 0;
 	virtual void ToggleDepthView( void ) = 0;
 	virtual bool DepthViewEnabled( void ) const = 0;

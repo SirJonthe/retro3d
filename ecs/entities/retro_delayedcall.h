@@ -11,18 +11,16 @@ namespace retro3d
 class DelayedCall : public mtlInherit< retro3d::Entity, DelayedCall >
 {
 private:
-	retro3d::RealTimeTimer m_timer;
-	retro3d::Procedure     m_procedure;
+	retro3d::Time                  m_time;
+	retro3d::TimerType             m_timer_type;
+	mtlShared<retro3d::IProcedure> m_procedure;
 
 protected:
-	virtual void OnSpawn( void );
 	virtual void OnUpdate( void );
-	virtual void OnDestroy( void );
 
 public:
-	DelayedCall( void );
-
-	void SetProcedure(retro3d::Procedure procedure, retro3d::Time time, bool scale_time);
+	DelayedCall( void ) = delete;
+	DelayedCall(const mtlShared<retro3d::IProcedure> &procedure, retro3d::Time time, retro3d::TimerType timer_type = retro3d::TIMER_REAL);
 };
 
 }

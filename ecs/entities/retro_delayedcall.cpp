@@ -1,39 +1,12 @@
 #include "retro_delayedcall.h"
 
-void retro3d::DelayedCall::OnSpawn( void )
-{
-	RETRO3D_ASSERT(m_procedure != nullptr && m_timer.IsTicking() == true);
-}
-
 void retro3d::DelayedCall::OnUpdate( void )
 {
-	if (m_timer.IsDue() == true || m_timer.IsTicking() == false) {
+	if (LifeTime(m_timer_type) >= m_time) {
+		(*m_procedure.GetShared())();
 		Destroy();
 	}
 }
 
-void retro3d::DelayedCall::OnDestroy( void )
-{
-	if (m_procedure != nullptr) {
-		m_procedure();
-	}
-}
-
-retro3d::DelayedCall::DelayedCall( void ) : mtlInherit(this), m_timer(), m_procedure(nullptr)
+retro3d::DelayedCall::DelayedCall(const mtlShared<retro3d::IProcedure> &procedure, retro3d::Time time, retro3d::TimerType timer_type) : mtlInherit(this), m_time(time), m_timer_type(timer_type), m_procedure(procedure)
 {}
-
-void retro3d::DelayedCall::SetProcedure(retro3d::Procedure procedure, retro3d::Time time, bool scale_time)
-{
-	m_procedure = procedure;
-
-	if (scale_time == false) {
-		m_timer.Pause();
-		m_timer.Reset();
-		m_timer.SetParent(nullptr);
-		m_timer.SetTickRate(1, time);
-	} else {
-		m_timer = GetEngine()->SpawnChildTimer(1, time);
-	}
-
-	m_timer.Start();
-}

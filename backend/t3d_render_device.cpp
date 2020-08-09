@@ -42,6 +42,7 @@ platform::T3DRenderDevice::Render2DJob *platform::T3DRenderDevice::Add2DJob(plat
 		m_2d_queue[m_num_2d_items].type  = type;
 		m_2d_queue[m_num_2d_items].xy    = xy;
 		m_2d_queue[m_num_2d_items].color = color;
+		m_2d_queue[m_num_2d_items].scale = 1;
 		++m_num_2d_items;
 		return &m_2d_queue[m_num_2d_items - 1];
 	}
@@ -680,11 +681,17 @@ void platform::T3DRenderDevice::Print(tiny3d::URect rect)
 			caret = tiny3d::DrawChars(m_dst, caret, caret_offset, p.text.c_str(), tiny3d::UInt(p.text.size()), p.color, 1, &rect);
 			break;
 		case Render2DJob::TextFree:
-			tiny3d::DrawChars(m_dst, tiny3d::Point{ p.xy.x + 1, p.xy.y + 1 }, p.xy.x, p.text.c_str(), tiny3d::UInt(p.text.size()), tiny3d::Color{0,0,0,tiny3d::Color::Solid}, 1, &rect);
-			caret = tiny3d::DrawChars(m_dst, p.xy, p.xy.x, p.text.c_str(), tiny3d::UInt(p.text.size()), p.color, 1, &rect);
+			//tiny3d::DrawChars(m_dst, tiny3d::Point{ p.xy.x + 1, p.xy.y + 1 }, p.xy.x, p.text.c_str(), tiny3d::UInt(p.text.size()), tiny3d::Color{0,0,0,tiny3d::Color::Solid}, 1, &rect);
+			tiny3d::DrawChars(m_dst, p.xy, p.xy.x, p.text.c_str(), tiny3d::UInt(p.text.size()), p.color, p.scale, &rect);
 			break;
 		case Render2DJob::Overlay:
 			tiny3d::DrawRegion(m_dst, p.dst_rect, *p.overlay, p.src_rect, &rect);
+			break;
+		case Render2DJob::Line:
+			break;
+		case Render2DJob::BoxLines:
+			break;
+		case Render2DJob::BoxFilled:
 			break;
 		}
 	}
@@ -944,7 +951,6 @@ retro3d::RenderDevice &platform::T3DRenderDevice::RenderText(const std::string &
 	Render2DJob *job = Add2DJob(Render2DJob::Text, tiny3d::Point{ 0,0 }, tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid });
 	if (job != nullptr) {
 		job->text = str;
-		++m_num_2d_items;
 	}
 	return *this;
 }
@@ -968,6 +974,37 @@ retro3d::RenderDevice &platform::T3DRenderDevice::RenderText(double n, const mml
 	std::ostringstream sout;
 	sout << std::fixed << std::setprecision(3) << n;
 	return RenderText(sout.str(), color);
+}
+
+retro3d::RenderDevice &platform::T3DRenderDevice::RenderText(const std::string &str, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color)
+{
+	Render2DJob *job = Add2DJob(Render2DJob::TextFree, xy, tiny3d::Color{ tiny3d::Byte(color[0] * 255.0f), tiny3d::Byte(color[1] * 255.0f), tiny3d::Byte(color[2] * 255.0f), tiny3d::Color::Solid });
+	if (job != nullptr) {
+		job->text = str;
+		job->scale = scale;
+	}
+	return *this;
+}
+
+retro3d::RenderDevice &platform::T3DRenderDevice::RenderText(int64_t n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color)
+{
+	std::ostringstream sout;
+	sout << n;
+	return RenderText(sout.str(), xy, scale, color);
+}
+
+retro3d::RenderDevice &platform::T3DRenderDevice::RenderText(uint64_t n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color)
+{
+	std::ostringstream sout;
+	sout << n;
+	return RenderText(sout.str(), xy, scale, color);
+}
+
+retro3d::RenderDevice &platform::T3DRenderDevice::RenderText(double n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color)
+{
+	std::ostringstream sout;
+	sout << std::fixed << std::setprecision(3) << n;
+	return RenderText(sout.str(), xy, scale, color);
 }
 
 void platform::T3DRenderDevice::ExecuteJobs(tiny3d::SInt thread_num, tiny3d::SInt dst_height_per_thread, tiny3d::SInt video_height_per_thread, bool update_video_out)

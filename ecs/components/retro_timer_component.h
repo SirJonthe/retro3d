@@ -10,36 +10,31 @@ namespace retro3d
 retro_component(TimerComponent)
 {
 private:
-	double             m_bps;
-	double             m_ticks;
-	double             m_p_ticks;
-	uint64_t           m_i_ticks;
-	retro3d::Procedure m_on_tick;
-	bool               m_is_ticking;
+	retro3d::RealTimeTimer         m_timer;
+	int64_t                        m_tick_count;
+	mtlShared<retro3d::IProcedure> m_on_tick;
+	mtlShared<retro3d::IProcedure> m_on_destroy;
+	bool                           m_multitick;
 
 protected:
+	void OnSpawn( void );
 	void OnUpdate( void );
+	void OnDestroy( void );
 
 public:
 	TimerComponent( void );
 
-	void SetTickRate(double rate, retro3d::RealTimeTimer::Units units);
-	double GetTickRate(retro3d::RealTimeTimer::Units units) const;
+	void SetTickRate(retro3d::TimerType timer_type, uint32_t num_ticks, retro3d::Time over_time = 1_s);
 
 	void Start( void );
-	void Stop( void );
-	void Toggle( void );
+	void Pause( void );
 	void Reset( void );
 
-	bool IsTicking( void ) const;
-	bool IsStopped( void ) const;
-	bool IsDue( void ) const;
+	void SetOnTick(const mtlShared<retro3d::IProcedure> &procedure);
+	void DisableOnTick( void );
 
-	double GetTime( void ) const;
-	uint64_t GetTicks( void ) const;
-
-	void SetProcedure(retro3d::Procedure procedure);
-	void RemoveProcedure( void );
+	void SetOnDestroy(const mtlShared<retro3d::IProcedure> &procedure);
+	void DisableOnDestroy( void );
 };
 
 }

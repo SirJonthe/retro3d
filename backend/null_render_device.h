@@ -34,6 +34,10 @@ public:
 	RenderDevice &RenderText(int64_t, const mmlVector<3>&) override { return *this; }
 	RenderDevice &RenderText(uint64_t, const mmlVector<3>&) override { return *this; }
 	RenderDevice &RenderText(double, const mmlVector<3>&) override { return *this; }
+	RenderDevice &RenderText(const std::string&, tiny3d::Point, uint32_t, const mmlVector<3>&) override { return *this; }
+	RenderDevice &RenderText(int64_t, tiny3d::Point, uint32_t, const mmlVector<3>&) override { return *this; }
+	RenderDevice &RenderText(uint64_t, tiny3d::Point, uint32_t, const mmlVector<3>&) override { return *this; }
+	RenderDevice &RenderText(double, tiny3d::Point, uint32_t, const mmlVector<3>&) override { return *this; }
 	void FinishRender(bool = true) override {}
 	void ToggleDepthView( void ) override {}
 	bool DepthViewEnabled() const override { return false; }

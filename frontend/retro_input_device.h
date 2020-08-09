@@ -6,6 +6,7 @@
 #include "../common/MiniLib/MTL/mtlArray.h"
 #include "../common/MiniLib/MTL/mtlStringMap.h"
 #include "../api/tiny3d/tiny_system.h"
+#include "../common/retro_time.h"
 
 namespace retro3d
 {
@@ -52,7 +53,7 @@ public:
 	virtual bool     UserQuit( void ) const = 0;
 	virtual uint64_t GetRealTimeMS( void ) const = 0;
 	virtual uint64_t GetProgramTimeMS( void ) const = 0;
-	virtual void     Sleep(uint64_t time_ms) const = 0;
+	virtual void     Sleep(retro3d::Time time) const = 0;
 	virtual void     ToggleMouseCursorLock( void ) = 0;
 	virtual bool     IsMouseCursorLocked( void ) const = 0;
 	virtual void     ToggleMouseCursorVisibility( void ) = 0;

@@ -2,95 +2,84 @@
 
 namespace retro3d { retro_register_component(TimerComponent) }
 
-#define MS_PER_SEC 1000
+void retro3d::TimerComponent::OnSpawn( void )
+{
+	m_timer = this->GetObject()->CreateGameTimer();
+}
 
 void retro3d::TimerComponent::OnUpdate( void )
 {
-	m_ticks += GetEngine()->DeltaTime() * m_bps;
-	m_p_ticks = m_ticks;
-	m_i_ticks = uint64_t(m_ticks);
+	const uint32_t ticks = m_timer.GetTicks();
+	m_timer.ResetTicks();
 
-	for (uint64_t i = 0; i < m_i_ticks && m_on_tick != nullptr; ++i) {
-		m_on_tick();
+	if (m_on_tick.IsNull() == false && m_on_tick->IsNull() == false) {
+		const uint32_t clipped_ticks = ticks > 0 && m_multitick == false ? 1 : ticks;
+		for (uint32_t i = 0; i < clipped_ticks; ++i) {
+			(*m_on_tick.GetShared())();
+		}
 	}
 
-	m_ticks -= m_i_ticks;
+	if (m_tick_count > -1 && (m_tick_count -= ticks) == 0) {
+		Destroy();
+	}
 }
 
-retro3d::TimerComponent::TimerComponent( void ) : mtlInherit(this), m_ticks(0.0), m_p_ticks(0.0), m_i_ticks(0), m_on_tick(nullptr), m_is_ticking(false)
+void retro3d::TimerComponent::OnDestroy( void )
+{
+	if (m_on_destroy.IsNull() == false) {
+		(*m_on_destroy.GetShared())();
+	}
+}
+
+retro3d::TimerComponent::TimerComponent( void ) : mtlInherit(this), m_timer(), m_tick_count(-1), m_on_tick(), m_on_destroy(), m_multitick(false)
 {}
 
-void retro3d::TimerComponent::SetTickRate(double rate, retro3d::RealTimeTimer::Units units)
+void retro3d::TimerComponent::SetTickRate(retro3d::TimerType timer_type, uint32_t num_ticks, retro3d::Time over_time)
 {
-	rate = mmlMax(rate, 0.0);
-	RETRO3D_ASSERT(rate > 0.0);
-	m_bps = (units == retro3d::RealTimeTimer::TicksPerSecond) ? rate : 1.0 / rate;
-}
-
-double retro3d::TimerComponent::GetTickRate(retro3d::RealTimeTimer::Units units) const
-{
-	return (units == retro3d::RealTimeTimer::TicksPerSecond) ? m_bps : 1.0 / m_bps;
+	switch (timer_type) {
+	case retro3d::TIMER_REAL:
+		m_timer = retro3d::RealTimeTimer(num_ticks, over_time);
+		break;
+	case retro3d::TIMER_SIM:
+		m_timer = GetEngine()->CreateSimulationTimer(num_ticks, over_time);
+		break;
+	case retro3d::TIMER_GAME:
+		m_timer = GetObject()->CreateGameTimer(num_ticks, over_time);
+		break;
+	}
 }
 
 void retro3d::TimerComponent::Start( void )
 {
-	if (!IsTicking()) {
-		m_is_ticking = true;
-	}
+	m_timer.Start();
 }
 
-void retro3d::TimerComponent::Stop( void )
+void retro3d::TimerComponent::Pause( void )
 {
-	if (IsTicking()) {
-		m_is_ticking = false;
-	}
-}
-
-void retro3d::TimerComponent::Toggle( void )
-{
-	if (IsTicking()) {
-		Stop();
-	} else {
-		Start();
-	}
+	m_timer.Pause();
 }
 
 void retro3d::TimerComponent::Reset( void )
 {
-	m_ticks = 0.0;
+	m_timer.Reset();
 }
 
-bool retro3d::TimerComponent::IsTicking( void ) const
-{
-	return m_is_ticking;
-}
-
-bool retro3d::TimerComponent::IsStopped( void ) const
-{
-	return !m_is_ticking;
-}
-
-bool retro3d::TimerComponent::IsDue( void ) const
-{
-	return m_i_ticks > 0;
-}
-
-double retro3d::TimerComponent::GetTime( void ) const
-{
-	return m_p_ticks;
-}
-
-uint64_t retro3d::TimerComponent::GetTicks( void ) const
-{
-	return m_i_ticks;
-}
-
-void retro3d::TimerComponent::SetProcedure(retro3d::Procedure procedure)
+void retro3d::TimerComponent::SetOnTick(const mtlShared<retro3d::IProcedure> &procedure)
 {
 	m_on_tick = procedure;
 }
 
-void retro3d::TimerComponent::RemoveProcedure( void )
+void retro3d::TimerComponent::DisableOnTick( void )
 {
-	m_on_tick = nullptr;
+	m_on_tick.Delete();
+}
+
+void retro3d::TimerComponent::SetOnDestroy(const mtlShared<retro3d::IProcedure> &procedure)
+{
+	m_on_destroy = procedure;
+}
+
+void retro3d::TimerComponent::DisableOnDestroy( void )
+{
+	m_on_destroy.Delete();
 }

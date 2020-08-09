@@ -245,9 +245,9 @@ uint64_t platform::SDLInputDevice::GetProgramTimeMS( void ) const
 	return uint64_t(SDL_GetTicks());
 }
 
-void platform::SDLInputDevice::Sleep(uint64_t time_ms) const
+void platform::SDLInputDevice::Sleep(retro3d::Time time) const
 {
-	SDL_Delay(Uint32(time_ms));
+	SDL_Delay(Uint32(time.GetTotalMS()));
 }
 
 void platform::SDLInputDevice::ToggleMouseCursorLock( void )

@@ -30,10 +30,24 @@ uint64_t retro3d::ColliderComponent::GetFilterFlags( void ) const
 	return m_filter_flags;
 }
 
+bool retro3d::ColliderComponent::GetFilterFlag(uint32_t flag_index) const
+{
+	return (m_filter_flags & (uint64_t(1) << flag_index)) != 0;
+}
+
 void retro3d::ColliderComponent::SetFilterFlags(uint64_t filter_flags)
 {
 	m_filter_flags = filter_flags;
 	m_reinsert = true;
+}
+
+void retro3d::ColliderComponent::SetFilterFlag(uint32_t flag_index, bool state)
+{
+	if (state == true) {
+		m_filter_flags |= (uint64_t(1) << flag_index);
+	} else {
+		m_filter_flags &= ~(uint64_t(1) << flag_index);
+	}
 }
 
 bool retro3d::ColliderComponent::IsStatic( void ) const

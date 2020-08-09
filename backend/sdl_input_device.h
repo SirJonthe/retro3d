@@ -27,7 +27,7 @@ public:
 	bool     UserQuit( void ) const override;
 	uint64_t GetRealTimeMS( void ) const override;
 	uint64_t GetProgramTimeMS( void ) const override;
-	void     Sleep(uint64_t time_ms) const override;
+	void     Sleep(retro3d::Time time) const override;
 	void     ToggleMouseCursorLock( void ) override;
 	bool     IsMouseCursorLocked( void ) const override;
 	void     ToggleMouseCursorVisibility( void ) override;

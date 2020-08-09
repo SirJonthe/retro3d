@@ -26,8 +26,8 @@ private:
 	uint64_t time;
 
 public:
-	// Constructing.
-	Time(uint32_t ms = 0);
+	// Construction.
+	explicit Time(uint32_t ms = 0);
 	Time(const Time&) = default;
 	Time &operator=(const Time&) = default;
 
@@ -38,6 +38,9 @@ public:
 	static constexpr uint64_t MAX_TIME_H  = MAX_TIME_M  / 60;
 	static constexpr uint64_t MAX_TIME_D  = MAX_TIME_H  / 24;
 	static constexpr uint64_t MAX_TIME_W  = MAX_TIME_D  / 7;
+
+	// Convert seconds (in floating point format) to Time.
+	static Time FloatSeconds(double s);
 
 	// Converts seconds to Time.
 	static Time Seconds(uint32_t s);
@@ -53,6 +56,9 @@ public:
 
 	// Converts weeks to Time.
 	static Time Weeks(uint32_t w);
+
+	// Returns the current time in milliseconds since the turn of the year 1900.
+	static uint64_t Now( void );
 
 	// Returns the time of day in 0-23 hours, 0-59 minutes, 0-59 seconds (no milliseconds).
 	static Time TimeOfDay( void );
@@ -71,9 +77,6 @@ public:
 
 	// Returns the current month as an integer 0-11.
 	static uint32_t CurrentMonth( void );
-
-	// Returns time in seconds in real units.
-	static double FloatSeconds(uint32_t ms);
 
 	// Returns the total amount of milliseconds.
 	uint32_t GetTotalMS( void ) const;
@@ -114,8 +117,11 @@ public:
 	// Returns the total amount of seconds as real numbers.
 	double GetFloatSeconds( void ) const;
 
-	// Same as GetFloatSeconds(), but less confusingly named when used for in RealTimeTimer and scaled times.
+	// Same as GetFloatSeconds(), but less confusingly named when used for in RealTimeTimer and scaled times (which formally measures in "ticks" which correspond to seconds).
 	double ToFloat( void ) const;
+
+	// Returns status of internal bit representation of time (since there is no way to retrieve e.g. nanoseconds etc.).
+	bool IsZero( void ) const;
 
 	// Basic arithmetic.
 	Time &operator+=(const Time &r);
@@ -153,13 +159,6 @@ namespace retro3d
 // A scaled timer that can be used to track time in other than seconds (called "ticks"). Updates as you look at the time.
 class RealTimeTimer
 {
-public:
-	enum Units
-	{
-		TicksPerSecond,
-		SecondsPerTick
-	};
-
 private:
 	const RealTimeTimer *m_parent;
 	retro3d::Time        m_time_scale;
@@ -168,18 +167,11 @@ private:
 	bool                 m_ticking;
 
 private:
-	// Updates the internal timer.
-	void          UpdateTimer( void );
-
 	// Returns the current time scale including parent time scales.
 	retro3d::Time GetTimeScale( void ) const;
 
 	// Returns the scaled time since last UpdateTimer.
 	retro3d::Time TimeDelta( void ) const;
-
-public:
-	// Returns unscaled time since epoch.
-	static uint64_t GetProgramTimeMS( void );
 
 public:
 	// Constructs a timer with properties. Does not start it.
@@ -189,11 +181,20 @@ public:
 	RealTimeTimer(const RealTimeTimer&) = default;
 	RealTimeTimer &operator=(const RealTimeTimer&) = default;
 
+	// Updates the internal timer. The user only needs to call this manually immediately before a parent timer is changing time scale.
+	retro3d::Time UpdateTimer( void );
+
 	// Changes the tick rate. Can be called while timer is ticking and only affect the time added to the clock *after* the call is made. 1 ms granularity.
-	void SetTickRate(uint32_t num_ticks, retro3d::Time over_time = 1_s);
+	void SetTickRate(uint32_t num_ticks, retro3d::Time over_time = 1_s, bool accumulate_time = true);
+
+	// Changes the tick rate based off of another timer's tick rate properties.
+	void SetTickRate(const retro3d::RealTimeTimer &timer, bool accumulate_time = true);
+
+	// Sets the time_scale directly.
+	void SetTimeScale(retro3d::Time time_scale, bool accumulate_time = true);
 
 	// Returns the current tick rate.
-	retro3d::Time GetSecondsPerTick( void ) const;
+	retro3d::Time GetTimePerTick( void ) const;
 
 	// Starts the timer.
 	void Start( void );
@@ -216,11 +217,14 @@ public:
 	// The status of the timer.
 	bool IsStopped( void ) const;
 
-	// Returns true if a whole tick has elapsed since last Start/Reset*/Decrement
+	// Returns true if a whole tick has elapsed since last Start or Reset*
 	bool IsDue( void ) const;
 
-	// Returns time (as floating-point seconds) scaled in relation to ticks.
+	// Returns time scaled in relation to ticks.
 	retro3d::Time GetScaledTime( void ) const;
+
+	// Returns the time stamp since last update (UpdateTimer, SetTickRate, Start, Pause, Toggle, Reset, ResetTicks) scaled in relation to ticks.
+	retro3d::Time GetScaledUpdateTime( void ) const;
 
 	// Returns the number of ticks that have elapsed. Corresponds to the whole part of GetTime().
 	uint32_t GetTicks( void ) const;
@@ -233,6 +237,14 @@ public:
 
 	// Creates a new timer with the current timer as parent. The user must decouple parent from child if parent is destroyed.
 	RealTimeTimer SpawnChild(uint32_t num_ticks = 1, retro3d::Time over_time = 1_s) const;
+};
+
+// Different types of timers used commonly in the engine.
+enum TimerType
+{
+	TIMER_REAL, // Real time.
+	TIMER_SIM,  // Real time, but scaled if game does not hit minimum (frame) rate.
+	TIMER_GAME  // Scaled according to user needs.
 };
 
 }

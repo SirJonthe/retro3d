@@ -27,7 +27,9 @@ public:
 	collider_t *CreateCollider( void );
 
 	uint64_t GetFilterFlags( void ) const;
+	bool     GetFilterFlag(uint32_t flag_index) const;
 	void     SetFilterFlags(uint64_t filter_flags);
+	void     SetFilterFlag(uint32_t flag_index, bool state);
 
 	bool IsStatic( void ) const;
 	void ToggleStatic( void );

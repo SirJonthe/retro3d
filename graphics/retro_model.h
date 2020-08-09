@@ -34,28 +34,35 @@ typedef retro3d::Array<retro3d::IndexVTN> FaceIndex;
 typedef retro3d::Array<retro3d::IndexVN>  FaceIndexVN;
 typedef retro3d::Array<retro3d::IndexV>   FaceIndexV;
 
+// Convert one index format to another.
+void Convert(const int32_t src, retro3d::IndexV &dst);
 void Convert(const retro3d::IndexVTN &src, retro3d::IndexV &dst);
 void Convert(const retro3d::IndexVTN &src, retro3d::IndexVN &dst);
+void Convert(const retro3d::IndexV &src, int32_t &dst);
 void Convert(const retro3d::IndexV &src, retro3d::IndexVTN &dst);
 void Convert(const retro3d::IndexV &src, retro3d::IndexVN &dst);
 void Convert(const retro3d::IndexVN &src, retro3d::IndexVTN &dst);
 void Convert(const retro3d::IndexVN &src, retro3d::IndexV &dst);
 
+void Convert(const retro3d::Array< int32_t > &src, retro3d::FaceIndexV &dst);
 void Convert(const retro3d::FaceIndex &src, retro3d::FaceIndexV &dst);
 void Convert(const retro3d::FaceIndex &src, retro3d::FaceIndexVN &dst);
+void Convert(const retro3d::FaceIndexV &src, retro3d::Array< int32_t> &dst);
 void Convert(const retro3d::FaceIndexV &src, retro3d::FaceIndex &dst);
 void Convert(const retro3d::FaceIndexV &src, retro3d::FaceIndexVN &dst);
 void Convert(const retro3d::FaceIndexVN &src, retro3d::FaceIndex &dst);
 void Convert(const retro3d::FaceIndexVN &src, retro3d::FaceIndexV &dst);
 
+void Convert(const retro3d::Array< retro3d::Array< int32_t > > &src, retro3d::Array< retro3d::FaceIndexV > &dst);
 void Convert(const retro3d::Array< retro3d::FaceIndex > &src, retro3d::Array< retro3d::FaceIndexV > &dst);
 void Convert(const retro3d::Array< retro3d::FaceIndex > &src, retro3d::Array< retro3d::FaceIndexVN > &dst);
+void Convert(const retro3d::Array< retro3d::FaceIndexV > &src, retro3d::Array< retro3d::Array< int32_t > > &dst);
 void Convert(const retro3d::Array< retro3d::FaceIndexV > &src, retro3d::Array< retro3d::FaceIndex > &dst);
 void Convert(const retro3d::Array< retro3d::FaceIndexV > &src, retro3d::Array< retro3d::FaceIndexVN > &dst);
 void Convert(const retro3d::Array< retro3d::FaceIndexVN > &src, retro3d::Array< retro3d::FaceIndex > &dst);
 void Convert(const retro3d::Array< retro3d::FaceIndexVN > &src, retro3d::Array< retro3d::FaceIndexV > &dst);
 
-
+// Contains the material definition and faces that share that material.
 struct Material : public retro3d::Asset<Material>
 {
 	std::string                        name;
@@ -64,6 +71,7 @@ struct Material : public retro3d::Asset<Material>
 	mtlShared<retro3d::Texture>        td;
 };
 
+// A POD type that handles model data that is stored in arrays.
 struct Model : public retro3d::Asset<Model>
 {
 	std::string                        name;
@@ -98,29 +106,61 @@ struct Model : public retro3d::Asset<Model>
 
 // LoadOBJ -> Returns a series of ModelObjects depending on number of 'o' in OBJ file.
 
-// Vertex
+// Vertex //
+
+// Transform an array of vertices by a given matrix.
 void         TransformVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::Transform &t);
+
+// Translate an array of vertices by a given vector.
 void         TranslateVertices(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &t);
+
+// Translate the given axis of an array of vertices by a given amount.
 void         TranslateVertices(retro3d::Array< mmlVector<3> > &v, int32_t axis, float t);
+
+// Translate vertex array so that its centroid is at the origin.
 void         CenterVerticesByMass(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center);
+
+// Translate vertex array so that its center is at the origin.
 void         CenterVerticesByVolume(retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &new_center);
+
+// Returns the largest of a vertex array's axis.
 float        CalculateVertexScale(const retro3d::Array< mmlVector<3> > &v);
+
+// Scale a vertex array by a given factor.
 void         ScaleVertices(retro3d::Array< mmlVector<3> > &v, float scale);
+
+// Compute the centroid of a given vertex array.
 mmlVector<3> CalculateCentroid(const retro3d::Array< mmlVector<3> > &v);
 mmlVector<3> CalculateCenterOfMass(const retro3d::Array< mmlVector<3> > &v);
+
+// Compute the center of a given vertex array.
 mmlVector<3> CalculateCenterOfVolume(const retro3d::Array< mmlVector<3> > &v);
+
+// Find the vertex that lies the furthest away in a given direction.
 mmlVector<3> FindExtremeVertexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &dir);
+
+// Find the index of the vertex that lies the furthest away in a given direction.
 int32_t      FindExtremeVertexIndexAlongDirection(const retro3d::Array< mmlVector<3> > &v, const mmlVector<3> &dir);
-bool         CalculatePointInConvexHull(const retro3d::Array< mmlVector<3> > &hull_v, const mmlVector<3> &p);
+
+// Determine if a point is inside a set of points on a convex hull. Fails to work if the user does not provide a set of points guaranteed to be convex.
+bool         IsPointInConvexHull(const retro3d::Array< mmlVector<3> > &hull_v, const mmlVector<3> &p);
+
+// Returns vertices stored as an array.
 void         ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<3> > &out);
 void         ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexV &f, retro3d::Array< mmlVector<3> > &out);
 void         ExtractFaceVertices(const retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexVN &f, retro3d::Array< mmlVector<3> > &out);
+
+// Inserts vertices into an existing face index array.
 void         InsertFaceVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndex &f, const retro3d::Array< mmlVector<3> > &in);
 void         InsertFaceVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexV &f, const retro3d::Array< mmlVector<3> > &in);
 void         InsertFaceVertices(retro3d::Array< mmlVector<3> > &v, const retro3d::FaceIndexVN &f, const retro3d::Array< mmlVector<3> > &in);
 
-// General
+// General //
+
+// Spatial alignment enums.
 enum Align { Align_Left, Align_Center, Align_Right };
+
+// Find the smallest component in each axis over an entire array of vectors.
 template < int n > mmlVector<n> CalculateMin(const retro3d::Array< mmlVector<n> > &v) {
 	mmlVector<n> m = v[0];
 	for (int i = 0; i < v.GetSize(); ++i) {
@@ -128,6 +168,8 @@ template < int n > mmlVector<n> CalculateMin(const retro3d::Array< mmlVector<n> 
 	}
 	return m;
 }
+
+// Find the smallest component in the given axis over an entire array of vectors.
 template < int n > float CalculateMin(const retro3d::Array< mmlVector<n> > &v, int32_t axis) {
 	float m = v[0][axis];
 	for (int i = 0; i < v.GetSize(); ++i) {
@@ -135,6 +177,8 @@ template < int n > float CalculateMin(const retro3d::Array< mmlVector<n> > &v, i
 	}
 	return m;
 }
+
+// Finds the largest component in each acis over an entire array of vectors.
 template < int n > mmlVector<n> CalculateMax(const retro3d::Array< mmlVector<n> > &v) {
 	mmlVector<n> m = v[0];
 	for (int i = 0; i < v.GetSize(); ++i) {
@@ -142,6 +186,8 @@ template < int n > mmlVector<n> CalculateMax(const retro3d::Array< mmlVector<n> 
 	}
 	return m;
 }
+
+// Finds the largest component in the given axis over an entire array of vectors.
 template < int n > float CalculateMax(const retro3d::Array< mmlVector<n> > &v, int32_t axis) {
 	float m = v[0][axis];
 	for (int i = 0; i < v.GetSize(); ++i) {
@@ -149,8 +195,14 @@ template < int n > float CalculateMax(const retro3d::Array< mmlVector<n> > &v, i
 	}
 	return m;
 }
+
+// Flips one axis of all vertices in an array.
 template < int n > void FlipAxis(retro3d::Array< mmlVector<n> > &v, int32_t axis)                       { for (int i = 0; i < v.GetSize(); ++i) { v[i][axis] = -v[i][axis]; } }
+
+// Flips all axis of all vertices in an array.
 template < int n > void FlipAxis(retro3d::Array< mmlVector<n> > &v)                                     { for (int i = 0; i < v.GetSize(); ++i) { v[i] = -v[i]; } }
+
+// Translates all vertices in an array to align an extreme point to the origin.
 template < int n > void AlignAxis(retro3d::Array< mmlVector<n> > &v, int32_t axis, retro3d::Align mode) {
 	float t = 0.0f;
 	switch (mode) {
@@ -169,38 +221,77 @@ template < int n > void AlignAxis(retro3d::Array< mmlVector<n> > &v, int32_t axi
 	retro3d::TranslateVertices(v, axis, t);
 }
 
-// Face
+// Swaps one axis with another.
+template < int n > void SwapAxis(retro3d::Array< mmlVector<n> > &v, int32_t a_axis, int32_t b_axis) { for (int i = 0; i < v.GetSize(); ++i) { mmlSwap(v[a_axis], v[b_axis]); } }
+
+// Face //
+
+// Reverse the winding of the faces, making them point in the opposite direction.
 void         InvertFaces(retro3d::Array< FaceIndex > &f);
 void         InvertFaces(retro3d::Array< FaceIndexVN > &f);
 void         InvertFaces(retro3d::Array< FaceIndexV > &f);
 
-// Normals
+// Normals //
+
+// Reverse the direction of all normals in n.
 void         InvertNormals(retro3d::Array< mmlVector<3> > &n);
+
+// Calculates normals based on individual vertices. Creates smooth shading. May cause sharp angles to be shaded smoothly (e.g. box).
 void         CalculateVertexNormals(const retro3d::Array< mmlVector<3> > &v, retro3d::Array< retro3d::Material > &m, retro3d::Array< mmlVector<3> > &out_normals);
 void         CalculateVertexNormals(const retro3d::Array< mmlVector<3> > &v, retro3d::Material &m, retro3d::Array< mmlVector<3> > &out_normals);
+
+// Calculates normals based on the faces that they belong to. Creates sharp shading.
 void         CalculateFaceNormals(const retro3d::Array< mmlVector<3> > &v, retro3d::Array< retro3d::Material > &m, retro3d::Array< mmlVector<3> > &out_normals);
 void         CalculateFaceNormals(const retro3d::Array< mmlVector<3> > &v, retro3d::Material &m, retro3d::Array< mmlVector<3> > &out_normals);
+
+// Returns an array of face normals from a face index array.
 void         ExtractFaceNormals(const retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<3> > &out);
 void         ExtractFaceNormals(const retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndexVN &f, retro3d::Array< mmlVector<3> > &out);
+
+// Inserts an array of face normals into an existing face index array.
 void         InsertFaceNormals(retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndex &f, const retro3d::Array< mmlVector<3> > &in);
 void         InsertFaceNormal(retro3d::Array< mmlVector<3> > &n, const retro3d::FaceIndexVN &f, const retro3d::Array< mmlVector<3> > &in);
 
-// Texture coords
+// Texture coords //
+
+// Returns an array of texture coordinates from a face index array.
 void         ExtractFaceTCoords(const retro3d::Array< mmlVector<2> > &t, const retro3d::FaceIndex &f, retro3d::Array< mmlVector<2> > &out);
+
+// Inserts an array of texture coordinates into an existing face index array.
 void         InsertFaceTCoords(retro3d::Array< mmlVector<2> > &t, const retro3d::FaceIndex &f, const retro3d::Array< mmlVector<2> > &in);
 
-// Topography
+// Topography //
+
+// Returns true when the given point lies inside the convex hull.
 bool         PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndex > &convex_hull, float FP_EPSILON = std::numeric_limits<float>::epsilon());
 bool         PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexV > &convex_hull, float FP_EPSILON = std::numeric_limits<float>::epsilon());
 bool         PointInsideConvexHull(const mmlVector<3> &point, const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexVN > &convex_hull, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+
+// Returns true when the given hull is convex.
+// NOTE: May be a bit fickle. Is very sensitive to FP_EPSILON.
 bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexV > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
 bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndexVN > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
 bool         IsConvex(const retro3d::Array< mmlVector<3> > &v, const retro3d::Array< retro3d::FaceIndex > &f, float FP_EPSILON = std::numeric_limits<float>::epsilon());
-void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > *hull_verts, retro3d::Array< retro3d::FaceIndexV > *outer_hull_faces);
-void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &hull_verts, retro3d::Array< retro3d::FaceIndexV > &outer_hull_faces);
-void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &hull_verts);
-void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< retro3d::FaceIndexV > &outer_hull_faces);
+
+// Creates a convex hull. hull_verts and outer_hull_faces are optional (although one must be specified). If both are specified, outer_hull_faces returns topography with indices to hull_verts. If hull_verts is not specified, outer_hull_faces returns indices to vert_cloud.
+// WARNING: O(n^4) where n = convex points. 1000 points will freeze execution as it takes tens of minutes to process.
+void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > *hull_verts, retro3d::Array< retro3d::FaceIndexV > *outer_hull_faces, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+
+// Creates a convex hull. outer_hull_faces returns topography with indices to hull_verts.
+// WARNING: O(n^4) where n = convex points. 1000 points will freeze execution as it takes tens of minutes to process.
+void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &hull_verts, retro3d::Array< retro3d::FaceIndexV > &outer_hull_faces, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+
+// Creates a convex hull. hull_verts returns the vertices that lie on the convex hull.
+void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &hull_verts, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+
+// Creates a convex hull. Returns the topography with indices to vert_cloud.
+// WARNING: O(n^4) where n = convex points. 1000 points will freeze execution as it takes tens of minutes to process.
+void         CreateConvexHull(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< retro3d::FaceIndexV > &outer_hull_faces, float FP_EPSILON = std::numeric_limits<float>::epsilon());
+
+// Returns the indices of the points in vert_cloud that does not lie on the convex hull.
 void         FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< int32_t > &out_index);
+
+// Returns an array of the points in vert_cloud that does not lie on the convex hull.
 void         FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud, retro3d::Array< mmlVector<3> > &out_vert);
 
 /*struct ModelExchange
@@ -211,6 +302,7 @@ void         FindConcavePoints(const retro3d::Array< mmlVector<3> > &vert_cloud,
 	retro3d::Array< Surface > surfaces;
 };*/
 
+// Used to manipulate a model in a more efficient manner.
 class MeshEditor
 {
 private:
@@ -242,6 +334,8 @@ private:
 	retro3d::AABB               m_aabb;
 	bool                        m_is_convex;
 	float                       m_FP_EPSILON;
+
+	// TODO: Also keep track of half edges (edges of triangles, stored separately from the corresponding edge shared by their neigbors).
 
 private:
 	static uint64_t Hash(int32_t a);
@@ -307,9 +401,11 @@ public:
 	// Removes concave points and faces from the editor and stitches holes back together (creates a convex model). NOTE: All surfaces will be baked into one.
 	void MakeConvex( void );
 
+	// Returns the status of convexity, where true = convex.
 	bool IsConvex( void ) const;
 };
 
+// Used to store a spatially optimized model that can be rendered without the use of a depth buffer.
 class DisplayModel : public retro3d::Asset<DisplayModel>
 {
 public:

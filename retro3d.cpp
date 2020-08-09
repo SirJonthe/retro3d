@@ -1,6 +1,8 @@
 #include <iostream>
 #include "common/MiniLib/MGL/mglCollision.h"
 #include "retro3d.h"
+#include "common/retro_defs.h"
+#include "common/retro_factory.h"
 #include "backend/null_render_device.h"
 #include "backend/null_input_device.h"
 #include "backend/null_sound_device.h"
@@ -474,6 +476,31 @@ void retro3d::Engine::CreateBaseModels( void )
 	std::cout << "done" << std::endl;
 }
 
+void retro3d::Engine::SetupTimers( void )
+{
+	m_real_timer.Pause();
+	m_real_timer.SetTickRate(1, 1_s);
+	m_real_timer.Reset();
+
+	m_sim_timer.Pause();
+	m_sim_timer.SetParent(&m_real_timer);
+	m_sim_timer.SetTickRate(1, 1_s);
+	m_sim_timer.Reset();
+
+	m_game_timer.Pause();
+	m_game_timer.SetParent(&m_sim_timer);
+	m_game_timer.SetTickRate(1, 1_s);
+	m_game_timer.Reset();
+
+	m_real_timer.Start();
+	m_sim_timer.Start();
+	m_game_timer.Start();
+
+	m_real_time = m_real_timer.UpdateTimer();
+	m_sim_time = m_sim_timer.UpdateTimer();
+	m_game_time = m_game_timer.UpdateTimer();
+}
+
 void retro3d::Engine::AddRequiredSystems( void )
 {
 	AddSystem<retro3d::CollisionSystem>();
@@ -489,46 +516,21 @@ void retro3d::Engine::Reset( void )
 
 	m_camera = &m_default_camera;
 
-	m_rand.SetSeed(m_input->GetProgramTimeMS());
+	m_rand.SetSeed(retro3d::Time::Now());
 	m_is_running = true;
 	m_quit = false;
 	m_frame = 0;
-	m_delta_time = m_min_delta_time;
-	m_time = 0.0;
+	m_delta_time = m_min_delta_time.GetFloatSeconds();
 
-	m_time_scale = 1.0;
+	SetupTimers();
 
-	m_refresh_timer.Pause();
-	m_refresh_timer.Reset();
-	m_refresh_timer.SetTickRate(1, 1_s);
-	m_refresh_timer.Start();
-
-	m_game_timer.Pause();
-	m_game_timer.Reset();
-	m_game_timer.SetTickRate(1, retro3d::Time(uint32_t(1000 * m_time_scale)));
-	m_game_timer.Start();
-
-	m_system_timer.Reset();
-	m_system_timer.Start();
+	m_frame_start_time = m_real_timer.GetScaledTime();
+	m_frame_time = m_min_delta_time;
 }
 
 void retro3d::Engine::UpdateDevices( void )
 {
 	m_input->Update();
-}
-
-void retro3d::Engine::TickEntityTime( void )
-{
-	mtlItem< retro3d::Entity* > *i = m_entities.GetFirst();
-	while (i != nullptr) {
-
-		retro3d::Entity *e = i->GetItem();
-
-		e->m_delta_time = mmlMin(m_delta_time * e->m_time_scale, m_max_delta_time);
-		e->m_time += e->m_delta_time;
-
-		i = i->GetNext();
-	}
 }
 
 void retro3d::Engine::InitSystems( void )
@@ -600,6 +602,15 @@ void retro3d::Engine::TickSystems( void )
 				system->second->OnUpdate();
 			}
 		}
+	}
+}
+
+void retro3d::Engine::TickEntities( void )
+{
+	mtlItem<retro3d::Entity*> *i = m_entities.GetFirst();
+	while (i != nullptr) {
+		i->GetItem()->OnUpdate();
+		i = i->GetNext();
 	}
 }
 
@@ -694,23 +705,12 @@ void retro3d::Engine::DestroyEntities( void )
 	// Delete and remove destroyed objects
 	for (mtlItem< Entity* > *i = m_entities.GetFirst(); i != nullptr;) {
 		if (i->GetItem()->IsDestroyed() == true) {
+			i->GetItem()->OnDestroy();
 			delete i->GetItem();
 			i = i->Remove();
 		} else {
 			i = i->GetNext();
 		}
-	}
-}
-
-void retro3d::Engine::TickGameTime( void )
-{
-	m_delta_time = mmlMin(m_refresh_timer.GetScaledTime().GetFloatSeconds() * m_time_scale, m_max_delta_time);
-	m_time += m_delta_time;
-	auto i = m_entities.GetFirst();
-	while (i != nullptr) {
-		i->GetItem()->m_delta_time = mmlMin(m_delta_time * i->GetItem()->m_time_scale, m_max_delta_time);
-		i->GetItem()->m_time += i->GetItem()->m_delta_time;
-		i = i->GetNext();
 	}
 }
 
@@ -736,13 +736,39 @@ void retro3d::Engine::DetectTermination( void )
 	}
 }
 
-void retro3d::Engine::Sleep( void )
+void retro3d::Engine::TickTime( void )
 {
-	double frame_time = m_refresh_timer.GetScaledTime().GetFloatSeconds();
-	if (frame_time < m_min_delta_time) {
-		m_input->Sleep(uint64_t((m_min_delta_time - frame_time) * 1000.0));
+	m_sim_timer.SetTickRate(m_real_timer, false); // Set 1t:1s tick rate by default.
+
+	const retro3d::Time now = m_real_timer.GetScaledTime();
+	m_frame_time = now - m_frame_start_time;
+	if (m_frame_time < m_min_delta_time) {
+		m_input->Sleep(m_min_delta_time - m_frame_time);
+	} else if (m_frame_time > m_max_delta_time) {
+		// The game does not achieve minimal acceptable target frame rate. Rather than making the time delta larger (as we might break stuff like physics), we slow down execution of the game.
+		// We make sure not to update the timer as that will push the current unscaled time delta to the accumulated
+		m_sim_timer.SetTimeScale(m_max_delta_time / m_frame_time, false);
 	}
-	m_refresh_timer.Reset();
+
+	m_real_time = m_real_timer.UpdateTimer();
+	m_sim_time = m_sim_timer.UpdateTimer();
+
+	retro3d::Time game_now = m_game_timer.UpdateTimer();
+	m_delta_time = (game_now - m_game_time).GetFloatSeconds();
+	m_game_time = game_now;
+
+	auto i = m_entities.GetFirst();
+	while (i != nullptr) {
+		retro3d::Entity *e = i->GetItem();
+
+		game_now = e->m_game_timer.UpdateTimer();
+		e->m_delta_time = (game_now - e->m_game_time).GetFloatSeconds();
+		e->m_game_time = e->m_game_timer.UpdateTimer();
+
+		i = i->GetNext();
+	}
+
+	m_frame_start_time = m_real_time; // Do not use 'now' since that is before sleeping
 }
 
 void retro3d::Engine::Tick( void )
@@ -759,6 +785,8 @@ void retro3d::Engine::Tick( void )
 
 	TickSystems();
 
+	TickEntities();
+
 	DestroySystems();
 
 	DestroyComponents();
@@ -767,11 +795,9 @@ void retro3d::Engine::Tick( void )
 
 	m_video->Display();
 
-	TickGameTime();
-
 	DetectTermination();
 
-	Sleep();
+	TickTime();
 
 	++m_frame;
 }
@@ -814,12 +840,12 @@ retro3d::Engine::Engine( void ) :
 	m_camera(&m_default_camera),
 	m_frame(0),
 	m_rand(),
-	m_time(0.0), m_delta_time(1.0/60.0), m_min_delta_time(1.0/120.0), m_max_delta_time(1.0/20.0),
-	m_time_scale(1.0),
+	m_delta_time(1.0/60.0), m_min_delta_time(1000/120), m_max_delta_time(1000/20),
 	m_is_running(false), m_quit(true)
 {
 	AddRequiredSystems();
 	CreateBaseModels();
+	SetupTimers();
 }
 
 retro3d::Engine::~Engine( void )
@@ -894,29 +920,84 @@ const retro3d::VideoDevice *retro3d::Engine::GetVideo( void ) const
 	return m_video;
 }
 
-double retro3d::Engine::Time( void ) const
+void retro3d::Engine::SetMaxUpdateFrequency(uint32_t max_hz)
 {
-	return m_time;
+	m_min_delta_time = retro3d::Time(1000 / max_hz);
 }
 
-double retro3d::Engine::DeltaTime( void ) const
+void retro3d::Engine::SetMaxSimulationTimeDelta(retro3d::Time time_delta)
 {
-	return m_delta_time;
+	m_max_delta_time = time_delta;
 }
 
-uint64_t retro3d::Engine::ProgramTime( void ) const
+retro3d::Time retro3d::Engine::RealTime( void ) const
 {
-	return m_input->GetProgramTimeMS();
+	return m_real_timer.GetScaledTime();
+}
+
+retro3d::Time retro3d::Engine::SimulationTime( void ) const
+{
+	return m_sim_timer.GetScaledTime();
+}
+
+retro3d::Time retro3d::Engine::GameTime( void ) const
+{
+	return m_game_timer.GetScaledTime();
+}
+
+retro3d::Time retro3d::Engine::Time(retro3d::TimerType type) const
+{
+	switch (type) {
+	case retro3d::TIMER_REAL: return RealTime();
+	case retro3d::TIMER_SIM:  return SimulationTime();
+	case retro3d::TIMER_GAME: return GameTime();
+	}
+	return retro3d::Time();
+}
+
+retro3d::Time retro3d::Engine::GetFrameTime( void ) const
+{
+	return m_frame_time;
+}
+
+retro3d::Time retro3d::Engine::GetLockedFrameTime( void ) const
+{
+	return mmlMax(m_min_delta_time, m_frame_time);
 }
 
 float retro3d::Engine::GetFramesPerSecond( void ) const
 {
-	return 1.0f / float(m_delta_time);
+	return 1.0f / m_frame_time.GetFloatSeconds();
+}
+
+float retro3d::Engine::GetLockedFramesPerSecond( void ) const
+{
+	return 1.0f / GetLockedFrameTime().GetFloatSeconds();
 }
 
 uint64_t retro3d::Engine::GetFrameCount( void ) const
 {
 	return m_frame;
+}
+
+retro3d::RealTimeTimer retro3d::Engine::CreateSimulationTimer(uint32_t num_ticks, retro3d::Time over_time) const
+{
+	return m_sim_timer.SpawnChild(num_ticks, over_time);
+}
+
+retro3d::RealTimeTimer retro3d::Engine::CreateGameTimer(uint32_t num_ticks, retro3d::Time over_time) const
+{
+	return m_game_timer.SpawnChild(num_ticks, over_time);
+}
+
+retro3d::RealTimeTimer retro3d::Engine::CreateTimer(retro3d::TimerType type, uint32_t num_ticks, retro3d::Time over_time) const
+{
+	switch (type) {
+	case retro3d::TIMER_REAL: return retro3d::RealTimeTimer(num_ticks, over_time);
+	case retro3d::TIMER_SIM:  return CreateSimulationTimer(num_ticks, over_time);
+	case retro3d::TIMER_GAME: return CreateGameTimer(num_ticks, over_time);
+	}
+	return retro3d::RealTimeTimer(num_ticks, over_time);
 }
 
 uint32_t retro3d::Engine::GetEntityCount( void ) const
@@ -926,12 +1007,12 @@ uint32_t retro3d::Engine::GetEntityCount( void ) const
 
 double retro3d::Engine::GetTimeScale( void ) const
 {
-	return m_time_scale;
+	return 1.0 / m_game_timer.GetTimePerTick().GetFloatSeconds();
 }
 
 void retro3d::Engine::SetTimeScale(double time_scale)
 {
-	m_time_scale = time_scale;
+	m_game_timer.SetTickRate(1, retro3d::Time::FloatSeconds(1.0 / time_scale), false);
 }
 
 // NOTE: KEEP THIS FOR REFERENCE!
@@ -1004,30 +1085,106 @@ void retro3d::Engine::Quit( void )
 	m_quit = true;
 }
 
-retro3d::RealTimeTimer retro3d::Engine::SpawnChildTimer(uint32_t num_ticks, retro3d::Time over_time) const
+retro3d::Entity *retro3d::Engine::SpawnEntity(const std::string &name)
 {
-	return m_game_timer.SpawnChild(num_ticks, over_time);
+	// FIXME: Not gonna work if the schematic requires the entity to have an engine connected.
+	retro3d::Entity *e = retro3d::Singleton< retro3d::Factory< retro3d::Entity > >::Instance().Assemble(name);
+	e->m_engine = this;
+	e->m_game_timer.SetParent(&m_game_timer);
+	e->m_delta_time = m_delta_time;
+	m_entities.AddLast(e);
+	e->OnSpawn();
+	return e;
 }
 
-bool retro3d::Engine::FindEntity(const std::string &name, mtlList<retro3d::Entity*> &results, bool search_inactive)
+bool retro3d::Engine::FindEntityByTag(const std::string &tag, mtlList<retro3d::Entity*> &results, bool search_inactive)
 {
 	mtlItem<retro3d::Entity*> *i = m_entities.GetFirst();
 	if (search_inactive == false) {
 		while (i != nullptr) {
-			if (name == i->GetItem()->GetName() && i->GetItem()->IsActive()) {
+			if (tag == i->GetItem()->GetTag() && i->GetItem()->IsActive()) {
 				results.AddLast(i->GetItem());
 			}
 			i = i->GetNext();
 		}
 	} else {
 		while (i != nullptr) {
-			if (name == i->GetItem()->GetName()) {
+			if (tag == i->GetItem()->GetTag()) {
 				results.AddLast(i->GetItem());
 			}
 			i = i->GetNext();
 		}
 	}
 	return results.GetSize() > 0;
+}
+
+bool retro3d::Engine::FindEntityByFilter(uint64_t filter_flags, mtlList<retro3d::Entity*> &results, retro3d::Engine::FilterSearchMode filter_search, bool search_inactive)
+{
+	mtlItem<retro3d::Entity*> *i = m_entities.GetFirst();
+	if (search_inactive == false) {
+		while (i != nullptr) {
+			if (i->GetItem()->IsActive() == true) {
+				switch (filter_search) {
+				case FILTERSEARCH_ANY:
+					if ((i->GetItem()->GetFilterFlags() & filter_flags) != 0) {
+						results.AddLast(i->GetItem());
+					}
+					break;
+				case FILTERSEARCH_EXACT:
+					if (i->GetItem()->GetFilterFlags() == filter_flags) {
+						results.AddLast(i->GetItem());
+					}
+					break;
+				case FILTERSEARCH_INCLUSIVE:
+					if ((i->GetItem()->GetFilterFlags() & filter_flags) == filter_flags) {
+						results.AddLast(i->GetItem());
+					}
+					break;
+				}
+			}
+			i = i->GetNext();
+		}
+	} else {
+		while (i != nullptr) {
+			if (i->GetItem()->IsActive() == true) {
+				switch (filter_search) {
+				case FILTERSEARCH_ANY:
+					if ((i->GetItem()->GetFilterFlags() & filter_flags) != 0) {
+						results.AddLast(i->GetItem());
+					}
+					break;
+				case FILTERSEARCH_EXACT:
+					if (i->GetItem()->GetFilterFlags() == filter_flags) {
+						results.AddLast(i->GetItem());
+					}
+					break;
+				case FILTERSEARCH_INCLUSIVE:
+					if ((i->GetItem()->GetFilterFlags() & filter_flags) == filter_flags) {
+						results.AddLast(i->GetItem());
+					}
+					break;
+				}
+			}
+			i = i->GetNext();
+		}
+	}
+	return results.GetSize() > 0;
+}
+
+retro3d::Entity *retro3d::Engine::FindEntityByUUID(uint64_t uuid, bool search_inactive)
+{
+	mtlItem<retro3d::Entity*> *i = m_entities.GetFirst();
+	while (i != nullptr) {
+		if (i->GetItem()->GetUUID() == uuid) {
+			if (search_inactive == false && i->GetItem()->IsActive() == false) {
+				return nullptr; // We found the entity, but it is not active and we do not include inactive results.
+			}
+			return i->GetItem();
+		}
+		i = i->GetNext();
+	}
+
+	return nullptr;
 }
 
 mtlShared<retro3d::Model> retro3d::Engine::DefaultModel( void )

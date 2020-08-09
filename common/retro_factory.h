@@ -13,20 +13,20 @@ template < typename type_t >
 class Factory
 {
 private:
-	mtlStringMap< retro3d::Schematic< type_t > > m_schematics;
+	mtlStringMap< retro3d::Schematic< type_t* > > m_schematics;
 
 public:
-	bool AddSchematic(const std::string &name, retro3d::Schematic< type_t > schematic);
-	bool Assemble(const std::string &name, type_t *assembly) const;
+	bool    AddSchematic(const std::string &name, retro3d::Schematic< type_t* > schematic);
+	type_t *Assemble(const std::string &name) const;
 };
 
 }
 
 template < typename type_t >
-bool retro3d::Factory<type_t>::AddSchematic(const std::string &name, retro3d::Schematic< type_t > schematic)
+bool retro3d::Factory<type_t>::AddSchematic(const std::string &name, retro3d::Schematic< type_t* > schematic)
 {
 	const mtlChars chars = mtlChars::FromDynamic(name.c_str(), int(name.size()));
-	retro3d::Schematic< type_t > *entry = m_schematics.GetEntry(chars);
+	retro3d::Schematic< type_t* > *entry = m_schematics.GetEntry(chars);
 
 	RETRO3D_ASSERT(entry == nullptr);
 
@@ -39,13 +39,11 @@ bool retro3d::Factory<type_t>::AddSchematic(const std::string &name, retro3d::Sc
 }
 
 template < typename type_t >
-bool retro3d::Factory<type_t>::Assemble(const std::string &name, type_t *assembly) const
+type_t *retro3d::Factory<type_t>::Assemble(const std::string &name) const
 {
 	const mtlChars chars = mtlChars::FromDynamic(name.c_str(), int(name.size()));
-	type_t *entry = m_schematics.GetEntry(name);
-	if (entry == nullptr) { return false; }
-	(*entry)(assembly);
-	return true;
+	const retro3d::Schematic<type_t*> *entry = m_schematics.GetEntry(chars);
+	return entry != nullptr ? (*entry)() : nullptr;
 }
 
 #endif // RETRO_FACTORY_H

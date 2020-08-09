@@ -94,7 +94,7 @@ const component_t *retro3d::Component::GetComponent( void ) const
 
 #define retro_component(component_class_name) class component_class_name : public mtlInherit< retro3d::Component, component_class_name >
 #define retro_register_component(component_class_name) \
-	void Alloc_##component_class_name(retro3d::Component *out) { out = new component_class_name; } \
+	retro3d::Component *Alloc_##component_class_name( void ) { return new component_class_name; } \
 	static const bool is_##component_class_name##_added = retro3d::Singleton< retro3d::Factory< retro3d::Component > >::Instance().AddSchematic(#component_class_name, Alloc_##component_class_name); \
 
 #endif // RETRO_COMPONENT_H

@@ -10,11 +10,17 @@ retro3d::Time::Time(uint32_t ms) : time(uint64_t(ms) << SCALAR)
 	RETRO3D_ASSERT(ms <= MAX_TIME_MS);
 }
 
-retro3d::Time retro3d::Time::Seconds(uint32_t s) { RETRO3D_ASSERT(s <= MAX_TIME_S); return retro3d::Time(s * 1000); }
-retro3d::Time retro3d::Time::Minutes(uint32_t m) { RETRO3D_ASSERT(m <= MAX_TIME_M); return Seconds(m * 60); }
-retro3d::Time retro3d::Time::Hours(uint32_t h)   { RETRO3D_ASSERT(h <= MAX_TIME_H); return Minutes(h * 60); }
-retro3d::Time retro3d::Time::Days(uint32_t d)    { RETRO3D_ASSERT(d <= MAX_TIME_D); return Hours(d * 24); }
-retro3d::Time retro3d::Time::Weeks(uint32_t w)   { RETRO3D_ASSERT(w <= MAX_TIME_W); return Days(w * 7); }
+retro3d::Time retro3d::Time::FloatSeconds(double s) { return retro3d::Time(mmlRound(s * 1000.0)); }
+retro3d::Time retro3d::Time::Seconds(uint32_t s)    { RETRO3D_ASSERT(s <= MAX_TIME_S); return retro3d::Time(s * 1000); }
+retro3d::Time retro3d::Time::Minutes(uint32_t m)    { RETRO3D_ASSERT(m <= MAX_TIME_M); return Seconds(m * 60); }
+retro3d::Time retro3d::Time::Hours(uint32_t h)      { RETRO3D_ASSERT(h <= MAX_TIME_H); return Minutes(h * 60); }
+retro3d::Time retro3d::Time::Days(uint32_t d)       { RETRO3D_ASSERT(d <= MAX_TIME_D); return Hours(d * 24); }
+retro3d::Time retro3d::Time::Weeks(uint32_t w)      { RETRO3D_ASSERT(w <= MAX_TIME_W); return Days(w * 7); }
+
+uint64_t retro3d::Time::Now( void )
+{
+	return uint64_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
 
 retro3d::Time retro3d::Time::TimeOfDay( void )
 {
@@ -58,8 +64,6 @@ uint32_t retro3d::Time::CurrentMonth( void )
 	return uint32_t(parts->tm_mon);
 }
 
-double retro3d::Time::FloatSeconds(uint32_t ms) { return ms / 1000.0; }
-
 uint32_t retro3d::Time::GetTotalMS( void )      const { return uint32_t(time >> SCALAR); }
 uint32_t retro3d::Time::GetTotalSeconds( void ) const { return GetTotalMS() / 1000; }
 uint32_t retro3d::Time::GetTotalMinutes( void ) const { return GetTotalSeconds() / 60; }
@@ -74,8 +78,10 @@ uint32_t retro3d::Time::GetPartHours( void )   const { return (time % (1000 * 60
 uint32_t retro3d::Time::GetPartDays( void )    const { return (time % (1000 * 60 * 60 * 24 * 7)) / (1000 * 60 * 60 * 24); }
 uint32_t retro3d::Time::GetPartWeeks( void )   const { return GetTotalWeeks(); }
 
-double retro3d::Time::GetFloatSeconds( void ) const { return FloatSeconds(uint32_t(time >> SCALAR)); }
+double retro3d::Time::GetFloatSeconds( void ) const { return (time >> SCALAR) / 1000.0; }
 double retro3d::Time::ToFloat( void ) const { return GetFloatSeconds(); }
+
+bool retro3d::Time::IsZero( void ) const { return time == 0; }
 
 retro3d::Time &retro3d::Time::operator+=(const retro3d::Time &r)
 {
@@ -91,6 +97,9 @@ retro3d::Time &retro3d::Time::operator-=(const retro3d::Time &r)
 
 retro3d::Time &retro3d::Time::operator*=(const retro3d::Time &r)
 {
+	static constexpr uint64_t ONE = uint64_t(1) << SCALAR;
+	if (r.time == ONE) { return *this; } // r is 1
+	if (time   == ONE) { time = r.time; return *this; }
 	mml::uint128 o = mml::mul128(mml::uint64(time), mml::uint64(r.time));
 	time = (o.hi << SCALAR) | (o.lo >> SCALAR);
 	return *this;
@@ -98,6 +107,8 @@ retro3d::Time &retro3d::Time::operator*=(const retro3d::Time &r)
 
 retro3d::Time &retro3d::Time::operator/=(const retro3d::Time &r)
 {
+	static constexpr uint64_t ONE = uint64_t(1) << SCALAR;
+	if (r.time == ONE) { return *this; }
 	mml::uint128 l = { time >> SCALAR, time << SCALAR };
 	time = mml::div128(l, r.time);
 	return *this;
@@ -122,16 +133,6 @@ retro3d::Time operator ""  _h(unsigned long long h)  { return retro3d::Time::Hou
 retro3d::Time operator ""  _d(unsigned long long d)  { return retro3d::Time::Days(d); }
 retro3d::Time operator ""  _w(unsigned long long w)  { return retro3d::Time::Weeks(w); }
 
-void retro3d::RealTimeTimer::UpdateTimer( void )
-{
-	if (m_ticking) {
-		retro3d::Time now = retro3d::Time(GetProgramTimeMS());
-		retro3d::Time delta = now - m_origin_time;
-		m_accum_ticks += delta * GetTimeScale();
-		m_origin_time = now;
-	}
-}
-
 retro3d::Time retro3d::RealTimeTimer::GetTimeScale( void ) const
 {
 	return m_parent == nullptr ? m_time_scale : m_time_scale * m_parent->GetTimeScale();
@@ -139,27 +140,46 @@ retro3d::Time retro3d::RealTimeTimer::GetTimeScale( void ) const
 
 retro3d::Time retro3d::RealTimeTimer::TimeDelta( void ) const
 {
-	return (retro3d::Time(GetProgramTimeMS()) - m_origin_time) * GetTimeScale();
+	return (retro3d::Time(retro3d::Time::Now()) - m_origin_time) * GetTimeScale();
 }
 
-uint64_t retro3d::RealTimeTimer::GetProgramTimeMS( void )
-{
-	return uint64_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
-}
-
-retro3d::RealTimeTimer::RealTimeTimer(uint32_t num_ticks, retro3d::Time over_time) : m_parent(nullptr), m_time_scale(0), m_origin_time(GetProgramTimeMS()), m_accum_ticks(0), m_ticking(false)
+retro3d::RealTimeTimer::RealTimeTimer(uint32_t num_ticks, retro3d::Time over_time) : m_parent(nullptr), m_time_scale(0), m_origin_time(retro3d::Time::Now()), m_accum_ticks(0), m_ticking(false)
 {
 	SetTickRate(num_ticks, over_time);
 }
 
-void retro3d::RealTimeTimer::SetTickRate(uint32_t num_ticks, retro3d::Time over_time)
+retro3d::Time retro3d::RealTimeTimer::UpdateTimer( void )
 {
-	RETRO3D_ASSERT(over_time.GetTotalMS() > 0 && num_ticks > 0);
-	UpdateTimer();
+	if (m_ticking) {
+		retro3d::Time now = retro3d::Time(retro3d::Time::Now());
+		retro3d::Time delta = now - m_origin_time;
+		m_accum_ticks += delta * GetTimeScale();
+		m_origin_time = now;
+	}
+	return m_accum_ticks;
+}
+
+void retro3d::RealTimeTimer::SetTickRate(uint32_t num_ticks, retro3d::Time over_time, bool accumulate_time)
+{
+	RETRO3D_ASSERT(over_time.IsZero() != true && num_ticks > 0);
+	if (accumulate_time) { UpdateTimer(); }
 	m_time_scale = retro3d::Time::Seconds(num_ticks) / over_time;
 }
 
-retro3d::Time retro3d::RealTimeTimer::GetSecondsPerTick( void ) const
+void retro3d::RealTimeTimer::SetTickRate(const retro3d::RealTimeTimer &timer, bool accumulate_time)
+{
+	if (accumulate_time) { UpdateTimer(); }
+	m_time_scale = timer.m_time_scale;
+}
+
+void retro3d::RealTimeTimer::SetTimeScale(retro3d::Time time_scale, bool accumulate_time)
+{
+	RETRO3D_ASSERT(time_scale.IsZero() != true);
+	if (accumulate_time) { UpdateTimer(); }
+	m_time_scale = time_scale;
+}
+
+retro3d::Time retro3d::RealTimeTimer::GetTimePerTick( void ) const
 {
 	return 1_s / m_time_scale;
 }
@@ -192,7 +212,7 @@ void retro3d::RealTimeTimer::Toggle( void )
 void retro3d::RealTimeTimer::Reset( void )
 {
 	UpdateTimer();
-	m_accum_ticks = 0;
+	m_accum_ticks = 0_ms;
 }
 
 void retro3d::RealTimeTimer::ResetTicks( void )
@@ -221,6 +241,11 @@ retro3d::Time retro3d::RealTimeTimer::GetScaledTime( void ) const
 	return m_ticking ? m_accum_ticks + TimeDelta() : m_accum_ticks;
 }
 
+retro3d::Time retro3d::RealTimeTimer::GetScaledUpdateTime( void ) const
+{
+	return m_accum_ticks;
+}
+
 uint32_t retro3d::RealTimeTimer::GetTicks( void ) const
 {
 	return GetScaledTime().GetTotalSeconds();
@@ -228,7 +253,8 @@ uint32_t retro3d::RealTimeTimer::GetTicks( void ) const
 
 double retro3d::RealTimeTimer::GetTickProgress( void ) const
 {
-	return GetScaledTime().GetTotalMS() / 1000.0;
+	const double sec = GetScaledTime().GetFloatSeconds();
+	return sec - int64_t(sec);
 }
 
 void retro3d::RealTimeTimer::SetParent(const retro3d::RealTimeTimer *parent)

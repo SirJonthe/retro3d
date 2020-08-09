@@ -14,7 +14,11 @@ private:
 	struct Render3DJob
 	{
 		enum Type {
-			Model, DisplayModel, Text, AABB, Frustum
+			Model, // Render a Model (polygon soup).
+			DisplayModel, // Render a DisplayModel (BSP).
+			Text, // Render 3D text.
+			AABB, // Render an AABB as lines.
+			Frustum // Render a frustum as lines.
 		};
 
 		const retro3d::Model        *model;
@@ -36,13 +40,19 @@ private:
 	struct Render2DJob // in separate array
 	{
 		enum Type {
-			Text, TextFree, Overlay
+			Text, // Text, aligned top-left of screen
+			TextFree, // Text, position is user-defined.
+			Overlay, // Bit image.
+			Line, // A line.
+			BoxLines, // A box made of lines.
+			BoxFilled // A filled box.
 		};
 
 		std::string   text;
 		tiny3d::Color color;
 		tiny3d::Point xy;
 		Type          type;
+		uint32_t      scale;
 		bool          to_console;
 
 		const tiny3d::Overlay *overlay;
@@ -147,6 +157,10 @@ public:
 	RenderDevice &RenderText(int64_t n, const mmlVector<3> &color) override;
 	RenderDevice &RenderText(uint64_t n, const mmlVector<3> &color) override;
 	RenderDevice &RenderText(double n, const mmlVector<3> &color) override;
+	RenderDevice &RenderText(const std::string &str, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color) override;
+	RenderDevice &RenderText(int64_t n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color) override;
+	RenderDevice &RenderText(uint64_t n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color) override;
+	RenderDevice &RenderText(double n, tiny3d::Point xy, uint32_t scale, const mmlVector<3> &color) override;
 	void FinishRender(bool update_video_out = true) override;
 	void ToggleDepthView( void ) override;
 	bool DepthViewEnabled( void ) const override;
