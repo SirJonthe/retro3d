@@ -51,7 +51,7 @@ private:
 	type_t  b;
 
 protected:
-	// Tweens the target and calls user-defined on_update.
+	// Tweens the target and calls user-defined OnUpdate.
 	void OnUpdate( void ) override;
 
 public:

@@ -9,7 +9,7 @@ namespace retro3d
 {
 
 template < typename num_t, typename real_t >
-num_t Cyclerp(const num_t &a, const num_t &b, real_t x)
+num_t Cyclerp(const num_t &a, const num_t &b, const real_t &x)
 {
 	return mmlLerp(
 		a, b,
@@ -39,9 +39,15 @@ real_t Sigmoid(const real_t &x)
 }
 
 template < typename num_t, typename real_t >
-num_t Jerklerp(const num_t &a, const num_t &b, real_t x)
+num_t Jerklerp(const num_t &a, const num_t &b, const real_t &x)
 {
 	return Accelerp(b, a, x);
+}
+
+template < typename num_t, typename real_t >
+num_t Berp(const num_t &a, const num_t &b, const num_t &c, const real_t &x)
+{
+	return mmlLerp(mmlLerp(a, c), mmlLerp(c, b), x);
 }
 
 template < typename type_t >

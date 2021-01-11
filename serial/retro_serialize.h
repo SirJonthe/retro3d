@@ -18,7 +18,9 @@ public:
 	Serializeable &operator=(const Serializeable&);
 
 	virtual bool Deserialize(retro3d::Reader &reader);
+	virtual bool Deserialize(const mtlChars &data);
 	virtual bool Serialize(const mtlPath &file_name) const;
+	virtual bool Serialize(mtlString &out_data) const;
 };
 
 }

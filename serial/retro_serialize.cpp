@@ -19,7 +19,17 @@ bool retro3d::Serializeable::Deserialize(retro3d::Reader&)
 	return false;
 }
 
+bool retro3d::Serializeable::Deserialize(const mtlChars &data)
+{
+	return false;
+}
+
 bool retro3d::Serializeable::Serialize(const mtlPath&) const
+{
+	return false;
+}
+
+bool retro3d::Serializeable::Serialize(mtlString &out_data) const
 {
 	return false;
 }
