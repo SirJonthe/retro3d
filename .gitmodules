@@ -1,9 +1,15 @@
-[submodule "api/tiny3d"]
-	path = api/tiny3d
-	url = https://www.github.com/SirJonthe/tiny3d.git
-[submodule "common/MiniLib"]
-	path = common/MiniLib
-	url = https://www.github.com/SirJonthe/MiniLib.git
-[submodule "common/md5"]
-	path = common/md5
+[submodule "lib/jobs"]
+	path = lib/jobs
+	url = https://github.com/SirJonthe/jobs.git
+[submodule "lib/arr"]
+	path = lib/arr
+	url = https://github.com/SirJonthe/arr.git
+[submodule "lib/md5"]
+	path = lib/md5
 	url = https://github.com/SirJonthe/md5.git
+[submodule "lib/tiny3d"]
+	path = lib/tiny3d
+	url = https://github.com/SirJonthe/tiny3d.git
+[submodule "lib/MiniLib"]
+	path = lib/MiniLib
+	url = https://github.com/SirJonthe/MiniLib.git
