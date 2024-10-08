@@ -6,7 +6,7 @@
 namespace retro3d
 {
 
-/// @brief The base device node on which all devices are based.
+/// @brief The base device node on which all devices are based. Devices represent an abstraction of some API for input and/or output such as graphics, sound, and e.g. keyboards, mice, controllers.
 class device : public retro3d::core::node
 {};
 

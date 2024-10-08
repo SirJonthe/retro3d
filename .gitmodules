@@ -13,3 +13,6 @@
 [submodule "lib/MiniLib"]
 	path = lib/MiniLib
 	url = https://github.com/SirJonthe/MiniLib.git
+[submodule "lib/dict"]
+	path = lib/dict
+	url = https://github.com/SirJonthe/dict.git
